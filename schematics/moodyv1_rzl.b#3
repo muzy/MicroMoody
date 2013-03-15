@@ -160,10 +160,6 @@ RaumZeitLabor e.V.</text>
 <circle x="4.128" y="20.32" radius="0.8" width="1.1" layer="116"/>
 <circle x="15.24" y="15.24" radius="0.375" width="0.25" layer="116"/>
 <circle x="15.24" y="10.16" radius="0.375" width="0.25" layer="116"/>
-<text x="11.7475" y="13.0175" size="1.016" layer="25">+</text>
-<text x="13.0175" y="12.7" size="1.016" layer="25">B</text>
-<text x="13.0175" y="11.43" size="1.016" layer="25">G</text>
-<text x="11.7475" y="11.43" size="1.016" layer="25">R</text>
 </plain>
 <libraries>
 <library name="avr-7">

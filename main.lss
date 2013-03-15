@@ -1,0 +1,99 @@
+
+main.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000052  00000000  00000000  00000054  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .stab         000006cc  00000000  00000000  000000a8  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  2 .stabstr      00000054  00000000  00000000  00000774  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  3 .comment      00000011  00000000  00000000  000007c8  2**0
+                  CONTENTS, READONLY
+  4 .debug_aranges 00000020  00000000  00000000  000007d9  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  5 .debug_info   000000dd  00000000  00000000  000007f9  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .debug_abbrev 00000099  00000000  00000000  000008d6  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_line   00000073  00000000  00000000  0000096f  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_frame  00000024  00000000  00000000  000009e4  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_str    0000008b  00000000  00000000  00000a08  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_ranges 00000010  00000000  00000000  00000a93  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	0e c0       	rjmp	.+28     	; 0x1e <__ctors_end>
+   2:	15 c0       	rjmp	.+42     	; 0x2e <__bad_interrupt>
+   4:	14 c0       	rjmp	.+40     	; 0x2e <__bad_interrupt>
+   6:	13 c0       	rjmp	.+38     	; 0x2e <__bad_interrupt>
+   8:	12 c0       	rjmp	.+36     	; 0x2e <__bad_interrupt>
+   a:	11 c0       	rjmp	.+34     	; 0x2e <__bad_interrupt>
+   c:	10 c0       	rjmp	.+32     	; 0x2e <__bad_interrupt>
+   e:	0f c0       	rjmp	.+30     	; 0x2e <__bad_interrupt>
+  10:	0e c0       	rjmp	.+28     	; 0x2e <__bad_interrupt>
+  12:	0d c0       	rjmp	.+26     	; 0x2e <__bad_interrupt>
+  14:	0c c0       	rjmp	.+24     	; 0x2e <__bad_interrupt>
+  16:	0b c0       	rjmp	.+22     	; 0x2e <__bad_interrupt>
+  18:	0a c0       	rjmp	.+20     	; 0x2e <__bad_interrupt>
+  1a:	09 c0       	rjmp	.+18     	; 0x2e <__bad_interrupt>
+  1c:	08 c0       	rjmp	.+16     	; 0x2e <__bad_interrupt>
+
+0000001e <__ctors_end>:
+  1e:	11 24       	eor	r1, r1
+  20:	1f be       	out	0x3f, r1	; 63
+  22:	cf e5       	ldi	r28, 0x5F	; 95
+  24:	d2 e0       	ldi	r29, 0x02	; 2
+  26:	de bf       	out	0x3e, r29	; 62
+  28:	cd bf       	out	0x3d, r28	; 61
+  2a:	02 d0       	rcall	.+4      	; 0x30 <main>
+  2c:	10 c0       	rjmp	.+32     	; 0x4e <_exit>
+
+0000002e <__bad_interrupt>:
+  2e:	e8 cf       	rjmp	.-48     	; 0x0 <__vectors>
+
+00000030 <main>:
+int main(void){
+	
+//	uint16_t softpwm = 0;
+	uint8_t r=0, g=85, b=170;
+	
+	DDRB = _BV(DDB1) | _BV(DDB3) | _BV(DDB4);	
+  30:	8a e1       	ldi	r24, 0x1A	; 26
+  32:	87 bb       	out	0x17, r24	; 23
+	PORTB = 0xFF;
+  34:	8f ef       	ldi	r24, 0xFF	; 255
+  36:	88 bb       	out	0x18, r24	; 24
+	
+	
+	TCCR1 = _BV(COM1A1) | _BV(COM1A0) | _BV(PWM1A) | _BV(CS10);
+  38:	91 e7       	ldi	r25, 0x71	; 113
+  3a:	90 bf       	out	0x30, r25	; 48
+	TCCR0A = _BV(WGM01) | _BV(WGM00);
+  3c:	93 e0       	ldi	r25, 0x03	; 3
+  3e:	9a bd       	out	0x2a, r25	; 42
+	GTCCR = _BV(COM1B1) | _BV(COM1B0) | _BV(PWM1B);
+  40:	90 e7       	ldi	r25, 0x70	; 112
+  42:	9c bd       	out	0x2c, r25	; 44
+		
+
+	OCR1A = 255;
+  44:	8e bd       	out	0x2e, r24	; 46
+	OCR1C = 255; 
+  46:	8d bd       	out	0x2d, r24	; 45
+	OCR1B = 127;
+  48:	8f e7       	ldi	r24, 0x7F	; 127
+  4a:	8b bd       	out	0x2b, r24	; 43
+  4c:	ff cf       	rjmp	.-2      	; 0x4c <__SREG__+0xd>
+
+0000004e <_exit>:
+  4e:	f8 94       	cli
+
+00000050 <__stop_program>:
+  50:	ff cf       	rjmp	.-2      	; 0x50 <__stop_program>

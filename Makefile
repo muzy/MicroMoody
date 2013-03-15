@@ -41,7 +41,7 @@
 
 
 # MCU name
-MCU = t85
+MCU = attiny85
 
 
 # Processor frequency.
@@ -269,7 +269,7 @@ AVRDUDE_PROGRAMMER = usbasp
 
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
-AVRDUDE_PORT = /dev/ttyUSB0
+AVRDUDE_PORT = 
 
 AVRDUDE_WRITE_FLASH = -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xfe:m \
 -U flash:w:$(TARGET).hex
@@ -290,7 +290,7 @@ AVRDUDE_WRITE_FLASH = -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xfe:m \
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
-AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
+AVRDUDE_FLAGS = -p $(MCU) -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)
