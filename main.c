@@ -17,17 +17,16 @@ volatile uint8_t want_red = 10;
 
 volatile uint8_t is_blue, is_green, is_red;
 
-int main(void){
+int main (void)
+{
 	
 	DDRB = _BV(DDB1) | _BV(DDB3) | _BV(DDB4);
 	PORTB = _BV(PB1) | _BV(PB3) | _BV(PB4);
 
 	uint8_t cnt = 0;
-	uint8_t state_blue = 0;
-
 
 	TCCR0A = _BV(WGM01) | _BV(WGM00);
-	TCCR0B = _BV(CS02);
+	TCCR0B = _BV(CS01) | _BV(CS00);
 	TIMSK = _BV(TOIE0);
 
 	GTCCR = _BV(PWM1B) | _BV(COM1B1) | _BV(COM1B0);
@@ -50,10 +49,11 @@ int main(void){
 	return 0;
 }
 
-ISR(TIMER0_OVF_vect) {
-	static uint8_t fadecnt = 0;
+ISR(TIMER0_OVF_vect)
+{
+	static uint16_t fadecnt = 0;
 
-	if (++fadecnt == 255) {
+	if (++fadecnt == 2048) {
 		fadecnt = 0;
 		want_blue = rand();
 		want_green = rand();
