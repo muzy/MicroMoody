@@ -7,6 +7,7 @@ AVRNM ?= avr-nm
 AVROBJCOPY ?= avr-objcopy
 AVROBJDUMP ?= avr-objdump
 
+CFLAGS += -DI2CEN
 CFLAGS += -mmcu=${MCU} -DF_CPU=8000000UL
 # CFLAGS += -gdwarf-2
 CFLAGS += -I. -std=gnu99 -Os -Wall -Wextra -pedantic

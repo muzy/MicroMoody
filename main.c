@@ -30,13 +30,18 @@
 #define OM_MODE_FADERAND      ( _BV(7) | _BV(6) |     0  )
 #define OM_MODE_FADEONOFF     ( _BV(7) | _BV(6) | _BV(5) )
 
+#define TEMPERATURE_ZERO (210)
 
 volatile uint8_t want_blue = 0;
 volatile uint8_t want_green = 0;
 volatile uint8_t want_red = 0;
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode = OM_MODE_FADERAND | 8;
+volatile uint8_t opmode = OM_MODE_STEADY | 24;
+
+volatile uint8_t step = 0;
+volatile uint8_t animstep = 0;
+
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -51,6 +56,8 @@ int main (void)
 
 	uint8_t cnt = 0;
 
+	WDTCR = _BV(WDE) | _BV(WDP3);
+
 	TCCR0A = _BV(WGM01) | _BV(WGM00);
 	TCCR0B = _BV(CS01);
 	TIMSK = _BV(TOIE0);
@@ -60,6 +67,20 @@ int main (void)
 	OCR1A = 0;
 	OCR1B = 0;
 	OCR1C = 0xff;
+
+	VGREEN = 1;
+	VBLUE = 1;
+
+#ifdef I2CEN
+	USICR = /* _BV(USISIE) | */ _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
+#endif
+
+#ifdef TEMPERATURE
+
+	ADMUX = _BV(REFS1) | 0x0f;
+	ADCSRA = _BV(ADEN) | _BV(ADSC);
+
+#endif /* TEMPERATURE */
 
 	sei();
 
@@ -77,14 +98,34 @@ int main (void)
 
 ISR(TIMER0_OVF_vect)
 {
-	static uint8_t step = 0;
-	static uint8_t animstep = 0;
+
+#ifdef TEMPERATURE
+
+	int16_t thermal = ADCL;
+	thermal |= (ADCH << 8);
+	thermal -= TEMPERATURE_ZERO;
+
+	if (thermal < 0)
+		VBLUE = 0xff;
+	else if (thermal < 32)
+		VBLUE = pwmtable[31 - thermal];
+	else
+		VBLUE = 0;
+
+	if (thermal < 20)
+		VRED = 0;
+	else if (thermal < 52)
+		VRED = pwmtable[thermal - 20];
+	else
+		VRED = 0xff;
+
+#else
 
 	step++;
 	if ((step % 64) == 0)
 		animstep++;
 
-	if (( ((step % ( (opmode & OM_M_SPEED) + 1 )) == 0) )
+	if (( ((step % ( ((opmode & OM_M_SPEED) + 1 ) * 2)) == 0) )
 			&& (opmode & OM_MODE_FADEANY ) ) {
 
 		if (VRED > want_red)
@@ -101,7 +142,7 @@ ISR(TIMER0_OVF_vect)
 			VBLUE++;
 	}
 
-	if (animstep == ( ( (opmode & OM_M_SPEED) + 1 ) * 4 ) ) {
+	if (animstep == ( ( (opmode & OM_M_SPEED) + 1 ) * 8 ) ) {
 		animstep = 0;
 		switch (opmode & OM_M_MODE) {
 			case OM_MODE_BLINKRGB:
@@ -173,4 +214,43 @@ ISR(TIMER0_OVF_vect)
 				break;
 		}
 	}
+
+#endif /* !TEMPERATURE */
+
+	asm("wdr");
 }
+
+#ifdef I2CEN
+#ifndef TEMPERATURE
+
+ISR(USI_OVF_vect)
+{
+	static uint8_t rcvbuf[6];
+	static uint8_t rcvcnt = sizeof(rcvbuf) - 1;
+
+
+	rcvbuf[rcvcnt] = USIBR;
+
+	if (rcvcnt) {
+		rcvcnt--;
+	} else {
+		rcvcnt = sizeof(rcvbuf) - 1;
+		step = animstep = 0;
+		opmode = rcvbuf[5];
+		if (opmode & OM_MODE_FADEANY) {
+			want_red = rcvbuf[4];
+			want_green = rcvbuf[3];
+			want_blue = rcvbuf[2];
+		}
+		else if ((opmode | OM_MODE_STEADY) == 0) {
+			VRED = rcvbuf[4];
+			VGREEN = rcvbuf[3];
+			VBLUE = rcvbuf[2];
+		}
+	}
+
+	USISR |= _BV(USIOIF);
+}
+
+#endif /* !TEMPERATURE */
+#endif /* I2CEN */
