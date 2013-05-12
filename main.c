@@ -42,6 +42,9 @@ volatile uint8_t opmode = OM_MODE_STEADY | 24;
 volatile uint8_t step = 0;
 volatile uint8_t animstep = 0;
 
+uint8_t ee_mode  EEMEM;
+uint8_t ee_red   EEMEM;
+uint8_t ee_valid, ee_green, ee_blue EEMEM;
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -68,8 +71,15 @@ int main (void)
 	OCR1B = 0;
 	OCR1C = 0xff;
 
-	VGREEN = 1;
-	VBLUE = 1;
+	if (eeprom_read_byte(&ee_valid) == 1) {
+		opmode =              eeprom_read_byte(&ee_mode);
+		VRED   = want_red   = eeprom_read_byte(&ee_red);
+		VGREEN = want_green = eeprom_read_byte(&ee_green);
+		VBLUE  = want_blue  = eeprom_read_byte(&ee_blue);
+	} else {
+		opmode = OM_MODE_FADERAND | 22;
+	}
+
 
 #ifdef I2CEN
 	USICR = /* _BV(USISIE) | */ _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
@@ -247,6 +257,11 @@ ISR(USI_OVF_vect)
 			VGREEN = rcvbuf[3];
 			VBLUE = rcvbuf[2];
 		}
+		eeprom_write_byte(&ee_valid, 1);
+		eeprom_write_byte(&ee_mode, opmode);
+		eeprom_write_byte(&ee_red, rcvbuf[4]);
+		eeprom_write_byte(&ee_green, rcvbuf[3]);
+		eeprom_write_byte(&ee_blue, rcvbuf[2]);
 	}
 
 	USISR |= _BV(USIOIF);
