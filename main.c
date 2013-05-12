@@ -37,12 +37,12 @@ volatile uint8_t want_green, cache_green;
 volatile uint8_t want_red,   cache_red;
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode;
+volatile uint8_t opmode, speed;
 
 volatile uint8_t step = 0;
-volatile uint8_t animstep = 0;
+volatile uint16_t animstep = 0;
 
-uint8_t ee_valid, ee_mode, ee_red, ee_green, ee_blue EEMEM;
+uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -71,11 +71,13 @@ int main (void)
 
 	if (eeprom_read_byte(&ee_valid) == 1) {
 		opmode =              eeprom_read_byte(&ee_mode);
+		speed  =              eeprom_read_byte(&ee_speed);
 		VRED   = want_red   = eeprom_read_byte(&ee_red);
 		VGREEN = want_green = eeprom_read_byte(&ee_green);
 		VBLUE  = want_blue  = eeprom_read_byte(&ee_blue);
 	} else {
-		opmode = OM_MODE_FADERAND | 30;
+		opmode = OM_MODE_FADERAND;
+		speed  = 96;
 		VRED   = want_red   = cache_red   = 0;
 		VGREEN = want_green = cache_green = 255;
 		VBLUE  = want_blue  = cache_blue  = 255;
@@ -136,7 +138,7 @@ ISR(TIMER0_OVF_vect)
 	if ((step % 32) == 0)
 		animstep++;
 
-	if (( ((step % ( ((opmode & OM_M_SPEED) + 1 ) * 1)) == 0) )
+	if (( ((step % ( ( speed | 1 ) * 1)) == 0) )
 			&& (opmode & OM_MODE_FADEANY ) ) {
 
 		if (VRED > want_red)
@@ -153,7 +155,7 @@ ISR(TIMER0_OVF_vect)
 			VBLUE++;
 	}
 
-	if (animstep == ( ( (opmode & OM_M_SPEED) + 1 ) * 4 ) ) {
+	if (animstep == ( ( (uint16_t)speed + 1 ) << 2 ) ) {
 		animstep = 0;
 		switch (opmode & OM_M_MODE) {
 			case OM_MODE_BLINKRGB:
@@ -235,7 +237,7 @@ ISR(TIMER0_OVF_vect)
 
 ISR(USI_OVF_vect)
 {
-	static uint8_t rcvbuf[6];
+	static uint8_t rcvbuf[7];
 	static uint8_t rcvcnt = sizeof(rcvbuf) - 1;
 
 
@@ -248,7 +250,8 @@ ISR(USI_OVF_vect)
 		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == ADDRLO)) {
 //		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == 1)) {
 			step = animstep = 0;
-			opmode = rcvbuf[5];
+			opmode = rcvbuf[6];
+			speed  = rcvbuf[5];
 			if (opmode & OM_MODE_FADEANY) {
 				want_red   = cache_red   = rcvbuf[4];
 				want_green = cache_green = rcvbuf[3];
@@ -261,6 +264,7 @@ ISR(USI_OVF_vect)
 			}
 			eeprom_write_byte(&ee_valid, 1);
 			eeprom_write_byte(&ee_mode, opmode);
+			eeprom_write_byte(&ee_speed, speed);
 			eeprom_write_byte(&ee_red, rcvbuf[4]);
 			eeprom_write_byte(&ee_green, rcvbuf[3]);
 			eeprom_write_byte(&ee_blue, rcvbuf[2]);

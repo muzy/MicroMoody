@@ -8,38 +8,38 @@ remote controlled with an I2C-like protocol. Real I2C support will follow soon.
 This is enabled by the `-DI2CEN` compile flag, which is set by default in the
 Makefile.
 
-Each command consists of 6 bytes, transfered with the most significant bit
+Each command consists of 7 bytes, transfered with the most significant bit
 first. I2C start/stop signals are not yet supported.
 
 The bytes are:
 * opmode
+* fade/blink speed
 * red value
 * green value
 * blue value
-* don't care
-* don't care
+* 0x00
+* 0x01
 
-the don't care bytes may be used for a 16bit device address in the future.
+the last two bytes may be used for a 16bit device address in the future.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
+the speed is inverted, so 0 is fastest, 255 is slowest.
 
-### modes of operation
+### opmode
 
-The highest three `opmode` bits determine the mode of operation, the other five
-the fade/blink speed (if applicable). Note that a speed of 0 causes the fastest
-transitions, while 31 is slowest. Modes marked with `RGB` interpret the
-red/green/blue bytes, for the others they're not important. Modes are:
+Modes marked with `RGB` interpret the red/green/blue bytes, for the others
+they're not important.
 
-*   0 ..  31: steady `RGB` light
-*  32 ..  63: rainbow colors, hard transitions
-*  64 ..  95: random colors, hard transitions
-*  96 .. 127: `RGB` color, blink on/off
-* 128 .. 159: steady light, fade to specified `RGB` color
-* 160 .. 191: rainbow colors, fading transitions
-* 192 .. 223: random colors, fading transitions
-* 224 .. 255: `RGB` color, fade on/off
+*   0: steady `RGB` light
+*  32: rainbow colors, hard transitions
+*  64: random colors, hard transitions
+*  96: `RGB` color, blink on/off
+* 128: steady light, fade to specified `RGB` color
+* 160: rainbow colors, fading transitions
+* 192: random colors, fading transitions
+* 224: `RGB` color, fade on/off
 
-Modes are saved and recalled after a power cycle.
+Mode and speed are saved and recalled after a power cycle.
 
 ## temperature sensor
 
