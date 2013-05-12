@@ -20,7 +20,7 @@ The bytes are:
 * address (high byte)
 * address (low byte)
 
-the default address is 0x0000.
+the default address is 0x0001. **NOTE**: I2C is somewhat broken right now.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
 the speed is inverted, so 0 is fastest, 255 is slowest.

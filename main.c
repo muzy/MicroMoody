@@ -14,9 +14,6 @@
 #define VGREEN ( OCR1A   )
 #define VBLUE  ( is_blue )
 
-#define DEFAULT_ADDRHI (0x00)
-#define DEFAULT_ADDRLO (0x00)
-
 #define OM_M_MODE  ( _BV(7) | _BV(6) | _BV(5) )
 #define OM_M_SPEED ( _BV(0) | _BV(1) | _BV(2) | _BV(3) | _BV(4) )
 
@@ -42,8 +39,8 @@ volatile uint8_t opmode, speed;
 volatile uint8_t step = 0;
 volatile uint16_t animstep = 0;
 
-volatile uint8_t addr_hi = DEFAULT_ADDRHI;
-volatile uint8_t addr_lo = DEFAULT_ADDRLO;
+volatile uint8_t addr_hi = 0x00;
+volatile uint8_t addr_lo = 0x01;
 
 uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
 uint8_t ee_addrhi, ee_addrlo EEMEM;
@@ -245,15 +242,15 @@ ISR(TIMER0_OVF_vect)
 ISR(USI_OVF_vect)
 {
 	static uint8_t rcvbuf[7];
-	static uint8_t rcvcnt = sizeof(rcvbuf) - 1;
+	static uint8_t rcvcnt = sizeof(rcvbuf);
 
 
-	rcvbuf[rcvcnt] = USIBR;
+	rcvbuf[--rcvcnt] = USIBR;
 
-	if (rcvcnt) {
-		rcvcnt--;
-	} else {
-		rcvcnt = sizeof(rcvbuf) - 1;
+	// XXX rcvbuf[0] doesn't work reliable. wtf.
+
+	if (rcvcnt == 0) {
+		rcvcnt = sizeof(rcvbuf);
 		if ((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
 			step = animstep = 0;
 			opmode = rcvbuf[6];
@@ -268,7 +265,11 @@ ISR(USI_OVF_vect)
 				VGREEN = cache_green = rcvbuf[3];
 				VBLUE  = cache_blue  = rcvbuf[2];
 			}
-			eeprom_write_byte(&ee_valid, 1);
+			if (eeprom_read_byte(&ee_valid) != 1) {
+				eeprom_write_byte(&ee_valid, 1);
+				eeprom_write_byte(&ee_addrhi, addr_hi);
+				eeprom_write_byte(&ee_addrlo, addr_lo);
+			}
 			eeprom_write_byte(&ee_mode, opmode);
 			eeprom_write_byte(&ee_speed, speed);
 			eeprom_write_byte(&ee_red, rcvbuf[4]);
