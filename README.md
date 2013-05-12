@@ -17,10 +17,10 @@ The bytes are:
 * red value
 * green value
 * blue value
-* 0x00
-* 0x01
+* address (high byte)
+* address (low byte)
 
-the last two bytes may be used for a 16bit device address in the future.
+the default address is 0x0000.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
 the speed is inverted, so 0 is fastest, 255 is slowest.

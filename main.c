@@ -14,8 +14,8 @@
 #define VGREEN ( OCR1A   )
 #define VBLUE  ( is_blue )
 
-#define ADDRHI (0x00)
-#define ADDRLO (0x01)
+#define DEFAULT_ADDRHI (0x00)
+#define DEFAULT_ADDRLO (0x00)
 
 #define OM_M_MODE  ( _BV(7) | _BV(6) | _BV(5) )
 #define OM_M_SPEED ( _BV(0) | _BV(1) | _BV(2) | _BV(3) | _BV(4) )
@@ -42,7 +42,11 @@ volatile uint8_t opmode, speed;
 volatile uint8_t step = 0;
 volatile uint16_t animstep = 0;
 
+volatile uint8_t addr_hi = DEFAULT_ADDRHI;
+volatile uint8_t addr_lo = DEFAULT_ADDRLO;
+
 uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
+uint8_t ee_addrhi, ee_addrlo EEMEM;
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -75,6 +79,9 @@ int main (void)
 		VRED   = want_red   = eeprom_read_byte(&ee_red);
 		VGREEN = want_green = eeprom_read_byte(&ee_green);
 		VBLUE  = want_blue  = eeprom_read_byte(&ee_blue);
+
+		addr_hi = eeprom_read_byte(&ee_addrhi);
+		addr_lo = eeprom_read_byte(&ee_addrlo);
 	} else {
 		opmode = OM_MODE_FADERAND;
 		speed  = 96;
@@ -247,8 +254,7 @@ ISR(USI_OVF_vect)
 		rcvcnt--;
 	} else {
 		rcvcnt = sizeof(rcvbuf) - 1;
-		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == ADDRLO)) {
-//		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == 1)) {
+		if ((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
 			step = animstep = 0;
 			opmode = rcvbuf[6];
 			speed  = rcvbuf[5];
