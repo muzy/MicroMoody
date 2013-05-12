@@ -14,8 +14,8 @@
 #define VGREEN ( OCR1A   )
 #define VBLUE  ( is_blue )
 
-#define MYADDRESS (0x0001)
-#define BROADCAST (0xffff)
+#define ADDRHI (0x00)
+#define ADDRLO (0x01)
 
 #define OM_M_MODE  ( _BV(7) | _BV(6) | _BV(5) )
 #define OM_M_SPEED ( _BV(0) | _BV(1) | _BV(2) | _BV(3) | _BV(4) )
@@ -32,19 +32,17 @@
 
 #define TEMPERATURE_ZERO (210)
 
-volatile uint8_t want_blue = 0;
-volatile uint8_t want_green = 0;
-volatile uint8_t want_red = 0;
+volatile uint8_t want_blue,  cache_blue;
+volatile uint8_t want_green, cache_green;
+volatile uint8_t want_red,   cache_red;
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode = OM_MODE_STEADY | 24;
+volatile uint8_t opmode;
 
 volatile uint8_t step = 0;
 volatile uint8_t animstep = 0;
 
-uint8_t ee_mode  EEMEM;
-uint8_t ee_red   EEMEM;
-uint8_t ee_valid, ee_green, ee_blue EEMEM;
+uint8_t ee_valid, ee_mode, ee_red, ee_green, ee_blue EEMEM;
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -77,7 +75,10 @@ int main (void)
 		VGREEN = want_green = eeprom_read_byte(&ee_green);
 		VBLUE  = want_blue  = eeprom_read_byte(&ee_blue);
 	} else {
-		opmode = OM_MODE_FADERAND | 22;
+		opmode = OM_MODE_FADERAND | 30;
+		VRED   = want_red   = cache_red   = 0;
+		VGREEN = want_green = cache_green = 255;
+		VBLUE  = want_blue  = cache_blue  = 255;
 	}
 
 
@@ -132,10 +133,10 @@ ISR(TIMER0_OVF_vect)
 #else
 
 	step++;
-	if ((step % 64) == 0)
+	if ((step % 32) == 0)
 		animstep++;
 
-	if (( ((step % ( ((opmode & OM_M_SPEED) + 1 ) * 2)) == 0) )
+	if (( ((step % ( ((opmode & OM_M_SPEED) + 1 ) * 1)) == 0) )
 			&& (opmode & OM_MODE_FADEANY ) ) {
 
 		if (VRED > want_red)
@@ -152,7 +153,7 @@ ISR(TIMER0_OVF_vect)
 			VBLUE++;
 	}
 
-	if (animstep == ( ( (opmode & OM_M_SPEED) + 1 ) * 8 ) ) {
+	if (animstep == ( ( (opmode & OM_M_SPEED) + 1 ) * 4 ) ) {
 		animstep = 0;
 		switch (opmode & OM_M_MODE) {
 			case OM_MODE_BLINKRGB:
@@ -177,23 +178,25 @@ ISR(TIMER0_OVF_vect)
 				VBLUE  = pwmtable[ rand() & 32 ];
 				break;
 			case OM_MODE_BLINKONOFF:
-				if (VRED == 127) {
+				if ((VRED == cache_red) && (VGREEN == cache_green)
+						&& (VBLUE == cache_blue)) {
 					VRED = VGREEN = VBLUE = 0;
 				}
 				else {
-					VRED   = 127;
-					VGREEN = 255;
-					VBLUE  = 255;
+					VRED   = cache_red;
+					VGREEN = cache_green;
+					VBLUE  = cache_blue;
 				}
 				break;
 			case OM_MODE_FADEONOFF:
-				if (want_red == 127) {
+				if ((want_red == cache_red) && (want_green == cache_green)
+						&& (want_blue == cache_blue)) {
 					want_red = want_green = want_blue = 0;
 				}
 				else {
-					want_red   = 127;
-					want_green = 255;
-					want_blue  = 255;
+					want_red   = cache_red;
+					want_green = cache_green;
+					want_blue  = cache_blue;
 				}
 				break;
 			case OM_MODE_FADERGB:
@@ -215,12 +218,9 @@ ISR(TIMER0_OVF_vect)
 			case OM_MODE_FADERAND:
 				want_red   = pwmtable[ rand() & 32 ];
 				want_green = pwmtable[ rand() & 32 ];
-				want_blue  = pwmtable [rand() & 32 ];
+				want_blue  = pwmtable[ rand() & 32 ];
 				break;
 			case OM_MODE_FADETOSTEADY:
-				want_red = 127;
-				want_green = 255;
-				want_blue = 255;
 				break;
 		}
 	}
@@ -245,23 +245,26 @@ ISR(USI_OVF_vect)
 		rcvcnt--;
 	} else {
 		rcvcnt = sizeof(rcvbuf) - 1;
-		step = animstep = 0;
-		opmode = rcvbuf[5];
-		if (opmode & OM_MODE_FADEANY) {
-			want_red = rcvbuf[4];
-			want_green = rcvbuf[3];
-			want_blue = rcvbuf[2];
+		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == ADDRLO)) {
+//		if ((rcvbuf[1] == ADDRHI) && (rcvbuf[0] == 1)) {
+			step = animstep = 0;
+			opmode = rcvbuf[5];
+			if (opmode & OM_MODE_FADEANY) {
+				want_red   = cache_red   = rcvbuf[4];
+				want_green = cache_green = rcvbuf[3];
+				want_blue  = cache_blue  = rcvbuf[2];
+			}
+			else if ((opmode | OM_MODE_STEADY) == 0) {
+				VRED   = cache_red   = rcvbuf[4];
+				VGREEN = cache_green = rcvbuf[3];
+				VBLUE  = cache_blue  = rcvbuf[2];
+			}
+			eeprom_write_byte(&ee_valid, 1);
+			eeprom_write_byte(&ee_mode, opmode);
+			eeprom_write_byte(&ee_red, rcvbuf[4]);
+			eeprom_write_byte(&ee_green, rcvbuf[3]);
+			eeprom_write_byte(&ee_blue, rcvbuf[2]);
 		}
-		else if ((opmode | OM_MODE_STEADY) == 0) {
-			VRED = rcvbuf[4];
-			VGREEN = rcvbuf[3];
-			VBLUE = rcvbuf[2];
-		}
-		eeprom_write_byte(&ee_valid, 1);
-		eeprom_write_byte(&ee_mode, opmode);
-		eeprom_write_byte(&ee_red, rcvbuf[4]);
-		eeprom_write_byte(&ee_green, rcvbuf[3]);
-		eeprom_write_byte(&ee_blue, rcvbuf[2]);
 	}
 
 	USISR |= _BV(USIOIF);
