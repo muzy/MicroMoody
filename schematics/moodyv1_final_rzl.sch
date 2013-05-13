@@ -6006,97 +6006,6 @@ DDEController.pdf</description>
 </deviceset>
 </devicesets>
 </library>
-<library name="transistor-power">
-<description>&lt;b&gt;Power Transistors&lt;/b&gt;&lt;p&gt;
-&lt;author&gt;Created by librarian@cadsoft.de&lt;/author&gt;</description>
-<packages>
-<package name="MICRO3">
-<description>&lt;b&gt;Micro3 TM Package Outline&lt;/b&gt;&lt;p&gt;
-www.irf.com / irlml5203.pdf</description>
-<wire x1="-1.45" y1="0.65" x2="-0.6" y2="0.65" width="0.1016" layer="21"/>
-<wire x1="-0.6" y1="0.65" x2="0.6" y2="0.65" width="0.1016" layer="51"/>
-<wire x1="0.6" y1="0.65" x2="1.45" y2="0.65" width="0.1016" layer="21"/>
-<wire x1="1.45" y1="0.65" x2="1.45" y2="-0.65" width="0.1016" layer="21"/>
-<wire x1="1.45" y1="-0.65" x2="0.35" y2="-0.65" width="0.1016" layer="51"/>
-<wire x1="0.35" y1="-0.65" x2="-0.35" y2="-0.65" width="0.1016" layer="21"/>
-<wire x1="-0.35" y1="-0.65" x2="-1.45" y2="-0.65" width="0.1016" layer="51"/>
-<wire x1="-1.45" y1="-0.65" x2="-1.45" y2="0.65" width="0.1016" layer="21"/>
-<smd name="1" x="-0.95" y="-1" dx="0.8" dy="0.9" layer="1"/>
-<smd name="2" x="0.95" y="-1" dx="0.8" dy="0.9" layer="1"/>
-<smd name="3" x="0" y="1" dx="0.8" dy="0.9" layer="1"/>
-<text x="-1.6" y="1.6" size="1.778" layer="25">&gt;NAME</text>
-<text x="-1.5" y="-3.4" size="1.778" layer="27">&gt;VALUE</text>
-<rectangle x1="-0.27" y1="0.66" x2="0.27" y2="1.25" layer="51"/>
-<rectangle x1="-1.22" y1="-1.25" x2="-0.68" y2="-0.65" layer="51"/>
-<rectangle x1="0.68" y1="-1.25" x2="1.22" y2="-0.64" layer="51"/>
-</package>
-</packages>
-<symbols>
-<symbol name="MFPS">
-<wire x1="-1.016" y1="-2.54" x2="-1.016" y2="2.54" width="0.254" layer="94"/>
-<wire x1="-1.016" y1="2.54" x2="-2.54" y2="2.54" width="0.1524" layer="94"/>
-<wire x1="2.54" y1="-1.905" x2="0.5334" y2="-1.905" width="0.1524" layer="94"/>
-<wire x1="2.54" y1="0" x2="2.54" y2="1.905" width="0.1524" layer="94"/>
-<wire x1="0.508" y1="1.905" x2="2.54" y2="1.905" width="0.1524" layer="94"/>
-<wire x1="2.54" y1="-2.54" x2="2.54" y2="-1.905" width="0.1524" layer="94"/>
-<wire x1="2.54" y1="-1.905" x2="5.08" y2="-1.905" width="0.1524" layer="94"/>
-<wire x1="5.08" y1="1.905" x2="2.54" y2="1.905" width="0.1524" layer="94"/>
-<wire x1="2.54" y1="1.905" x2="2.54" y2="2.54" width="0.1524" layer="94"/>
-<wire x1="2.2352" y1="0" x2="2.286" y2="0" width="0.1524" layer="94"/>
-<wire x1="2.286" y1="0" x2="2.54" y2="0" width="0.1524" layer="94"/>
-<wire x1="2.286" y1="0" x2="1.016" y2="-0.508" width="0.1524" layer="94"/>
-<wire x1="1.016" y1="-0.508" x2="1.016" y2="0.508" width="0.1524" layer="94"/>
-<wire x1="1.016" y1="0.508" x2="2.286" y2="0" width="0.1524" layer="94"/>
-<wire x1="1.143" y1="0" x2="0.254" y2="0" width="0.1524" layer="94"/>
-<wire x1="1.143" y1="0.254" x2="2.032" y2="0" width="0.3048" layer="94"/>
-<wire x1="2.032" y1="0" x2="1.143" y2="-0.254" width="0.3048" layer="94"/>
-<wire x1="1.143" y1="-0.254" x2="1.143" y2="0" width="0.3048" layer="94"/>
-<wire x1="1.143" y1="0" x2="1.397" y2="0" width="0.3048" layer="94"/>
-<wire x1="5.08" y1="1.905" x2="5.08" y2="0.762" width="0.1524" layer="94"/>
-<wire x1="5.08" y1="0.762" x2="5.08" y2="-1.905" width="0.1524" layer="94"/>
-<wire x1="5.08" y1="0.762" x2="5.715" y2="-0.635" width="0.1524" layer="94"/>
-<wire x1="5.715" y1="-0.635" x2="4.445" y2="-0.635" width="0.1524" layer="94"/>
-<wire x1="4.445" y1="-0.635" x2="5.08" y2="0.762" width="0.1524" layer="94"/>
-<wire x1="5.715" y1="0.762" x2="5.08" y2="0.762" width="0.1524" layer="94"/>
-<wire x1="5.08" y1="0.762" x2="4.445" y2="0.762" width="0.1524" layer="94"/>
-<wire x1="4.445" y1="0.762" x2="4.191" y2="1.016" width="0.1524" layer="94"/>
-<wire x1="5.715" y1="0.762" x2="5.969" y2="0.508" width="0.1524" layer="94"/>
-<circle x="2.54" y="1.905" radius="0.127" width="0.4064" layer="94"/>
-<circle x="2.54" y="-1.905" radius="0.127" width="0.4064" layer="94"/>
-<text x="7.62" y="2.54" size="1.778" layer="95">&gt;NAME</text>
-<text x="7.62" y="0" size="1.778" layer="96">&gt;VALUE</text>
-<text x="1.524" y="-3.302" size="0.8128" layer="93">D</text>
-<text x="1.524" y="2.54" size="0.8128" layer="93">S</text>
-<text x="-2.286" y="1.27" size="0.8128" layer="93">G</text>
-<rectangle x1="-0.254" y1="1.27" x2="0.508" y2="2.54" layer="94"/>
-<rectangle x1="-0.254" y1="-2.54" x2="0.508" y2="-1.27" layer="94"/>
-<rectangle x1="-0.254" y1="-0.889" x2="0.508" y2="0.889" layer="94"/>
-<pin name="G" x="-2.54" y="2.54" visible="off" length="point" direction="pas"/>
-<pin name="D" x="2.54" y="-5.08" visible="off" length="short" direction="pas" rot="R90"/>
-<pin name="S" x="2.54" y="5.08" visible="off" length="short" direction="pas" rot="R270"/>
-</symbol>
-</symbols>
-<devicesets>
-<deviceset name="IRLML5203" prefix="Q">
-<description>&lt;b&gt;HEXFET P-Channel Power MOSFET&lt;/b&gt;</description>
-<gates>
-<gate name="G$1" symbol="MFPS" x="0" y="0"/>
-</gates>
-<devices>
-<device name="" package="MICRO3">
-<connects>
-<connect gate="G$1" pin="D" pad="3"/>
-<connect gate="G$1" pin="G" pad="1"/>
-<connect gate="G$1" pin="S" pad="2"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-</devicesets>
-</library>
 </libraries>
 <attributes>
 </attributes>
@@ -6119,7 +6028,6 @@ www.irf.com / irlml5203.pdf</description>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
 <part name="P+3" library="supply1" deviceset="+5V" device=""/>
 <part name="GND2" library="supply1" deviceset="GND" device=""/>
-<part name="Q1" library="transistor-power" deviceset="IRLML5203" device=""/>
 <part name="C1" library="resistor" deviceset="C-EU" device="C0805" value="100nF"/>
 </parts>
 <sheets>
@@ -6138,7 +6046,6 @@ www.irf.com / irlml5203.pdf</description>
 <instance part="GND1" gate="1" x="33.02" y="33.02"/>
 <instance part="P+3" gate="1" x="116.84" y="30.48"/>
 <instance part="GND2" gate="1" x="121.92" y="20.32"/>
-<instance part="Q1" gate="G$1" x="30.48" y="43.18" rot="MR90"/>
 <instance part="C1" gate="G$1" x="38.1" y="43.18"/>
 </instances>
 <busses>
@@ -6149,10 +6056,8 @@ www.irf.com / irlml5203.pdf</description>
 <pinref part="GND1" gate="1" pin="GND"/>
 <pinref part="U$1" gate="G$1" pin="GND"/>
 <wire x1="45.72" y1="40.64" x2="45.72" y2="35.56" width="0.1524" layer="91"/>
-<pinref part="Q1" gate="G$1" pin="G"/>
 <wire x1="45.72" y1="35.56" x2="38.1" y2="35.56" width="0.1524" layer="91"/>
 <wire x1="38.1" y1="35.56" x2="33.02" y2="35.56" width="0.1524" layer="91"/>
-<wire x1="33.02" y1="40.64" x2="33.02" y2="35.56" width="0.1524" layer="91"/>
 <pinref part="C1" gate="G$1" pin="2"/>
 <wire x1="38.1" y1="38.1" x2="38.1" y2="35.56" width="0.1524" layer="91"/>
 </segment>
@@ -6251,13 +6156,7 @@ www.irf.com / irlml5203.pdf</description>
 </segment>
 <segment>
 <pinref part="P+1" gate="1" pin="+5V"/>
-<pinref part="Q1" gate="G$1" pin="D"/>
 <wire x1="25.4" y1="50.8" x2="25.4" y2="45.72" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="N$1" class="0">
-<segment>
-<pinref part="Q1" gate="G$1" pin="S"/>
 <pinref part="U$1" gate="G$1" pin="VCC"/>
 <wire x1="35.56" y1="45.72" x2="35.56" y2="50.8" width="0.1524" layer="91"/>
 <wire x1="35.56" y1="50.8" x2="45.72" y2="50.8" width="0.1524" layer="91"/>
@@ -6272,6 +6171,7 @@ www.irf.com / irlml5203.pdf</description>
 <wire x1="88.9" y1="86.36" x2="109.22" y2="86.36" width="0.1524" layer="91"/>
 <pinref part="C1" gate="G$1" pin="1"/>
 <wire x1="35.56" y1="45.72" x2="38.1" y2="45.72" width="0.1524" layer="91"/>
+<wire x1="25.4" y1="45.72" x2="35.56" y2="45.72" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
