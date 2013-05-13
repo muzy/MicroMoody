@@ -56,6 +56,13 @@ Enabled by `-DTEMPERATURE`. Disables I2C and fading. Not finished yet.
 Uses the LED to display the current ambient temperature, blue means cold,
 red means warm.
 
+## remote control via USB -> I2C bridge
+
+[Example firmware and
+software](http://lib.finalrewind.org/a/PowerSwitch.2012-12-08.i2c.tar.bz2)
+based on [VUSB](http://vusb.wikidot.com/hardware). Refer to their website
+for more information.
+
 ## recognizing the firmware state
 
 At the time of this writing, a newly flashed MicroMoody with default address
