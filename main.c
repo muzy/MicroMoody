@@ -23,6 +23,7 @@
 #define OM_MODE_FADERGB       (  6)
 #define OM_MODE_FADERAND      (  7)
 #define OM_MODE_FADEONOFF     (  8)
+#define OM_MODE_SETADDR       (201)
 
 #define TEMPERATURE_ZERO (210)
 
@@ -83,11 +84,11 @@ int main (void)
 		addr_lo  = eeprom_read_byte(&ee_addrlo);
 		addr_i2c = eeprom_read_byte(&ee_addri2c);
 	} else {
-		opmode = OM_MODE_BLINKONOFF;
+		opmode = OM_MODE_BLINKRGB;
 		speed  = 32;
-		VRED   = want_red   = cache_red   = 0;
+		VRED   = want_red   = cache_red   = 255;
 		VGREEN = want_green = cache_green = 255;
-		VBLUE  = want_blue  = cache_blue  = 255;
+		VBLUE  = want_blue  = cache_blue  = 0;
 	}
 
 
@@ -260,7 +261,8 @@ ISR(USI_OVF_vect)
 
 	if (rcvcnt == 0) {
 		rcvcnt = sizeof(rcvbuf);
-		if ((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
+		if ((rcvbuf[7] == addr_i2c) &&
+				(rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
 			step = animstep = 0;
 			opmode = rcvbuf[6];
 			speed  = rcvbuf[5];
@@ -274,17 +276,35 @@ ISR(USI_OVF_vect)
 				want_green = cache_green = rcvbuf[3];
 				want_blue  = cache_blue  = rcvbuf[2];
 			}
+			else if (opmode == OM_MODE_SETADDR) {
+				addr_hi  = rcvbuf[4];
+				addr_lo  = rcvbuf[3];
+				addr_i2c = rcvbuf[2] | 1;
+
+				opmode = OM_MODE_FADERAND;
+				speed = 64;
+				rcvbuf[4] = 0;
+				rcvbuf[3] = 255;
+				rcvbuf[2] = 0;
+
+				// force address rewrite
+				eeprom_write_byte(&ee_valid, 0);
+			}
+
 			if (eeprom_read_byte(&ee_valid) != 1) {
 				eeprom_write_byte(&ee_valid, 1);
 				eeprom_write_byte(&ee_addrhi, addr_hi);
 				eeprom_write_byte(&ee_addrlo, addr_lo);
-				eeprom_write_byte(&ee_addri2c, addr_i2c);
+				eeprom_write_byte(&ee_addri2c, addr_i2c | 1);
 			}
-			eeprom_write_byte(&ee_mode, opmode);
-			eeprom_write_byte(&ee_speed, speed);
-			eeprom_write_byte(&ee_red, rcvbuf[4]);
-			eeprom_write_byte(&ee_green, rcvbuf[3]);
-			eeprom_write_byte(&ee_blue, rcvbuf[2]);
+
+			if (opmode < 8) {
+				eeprom_write_byte(&ee_mode, opmode);
+				eeprom_write_byte(&ee_speed, speed);
+				eeprom_write_byte(&ee_red, rcvbuf[4]);
+				eeprom_write_byte(&ee_green, rcvbuf[3]);
+				eeprom_write_byte(&ee_blue, rcvbuf[2]);
+			}
 		}
 	}
 
