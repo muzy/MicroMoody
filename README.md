@@ -3,15 +3,14 @@
 RGB LED driven by an ATTiny85. Supports various modes of operation and can be
 remote controlled with an I2C-like protocol. Real I2C support will follow soon.
 
-## remote control (almost-I2C)
+## remote control (I2C)
 
 This is enabled by the `-DI2CEN` compile flag, which is set by default in the
 Makefile.
 
-Each command consists of 7 bytes, transfered with the most significant bit
-first. I2C start/stop signals are not yet supported.
+After sending the 7bit address and the r/w bit (which are not interpreted yet),
+the bus master must send the following 7 bytes to the MicroMoody:
 
-The bytes are:
 * opmode
 * fade/blink speed
 * red value
@@ -20,7 +19,7 @@ The bytes are:
 * address (high byte)
 * address (low byte)
 
-the default address is 0x0001. **NOTE**: I2C is somewhat broken right now.
+the default address is 0x0001.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
 the speed is inverted, so 0 is fastest, 255 is slowest.
@@ -43,7 +42,7 @@ Mode and speed are saved and recalled after a power cycle.
 
 ## temperature sensor
 
-Enabled by `-DTEMPERATURE`. Disables I2C and fading.
+Enabled by `-DTEMPERATURE`. Disables I2C and fading. Not finished yet.
 
 Uses the LED to display the current ambient temperature, blue means cold,
 red means warm.

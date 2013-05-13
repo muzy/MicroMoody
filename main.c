@@ -36,11 +36,16 @@ volatile uint8_t opmode, speed;
 volatile uint8_t step = 0;
 volatile uint16_t animstep = 0;
 
-volatile uint8_t addr_hi = 0x00;
-volatile uint8_t addr_lo = 0x01;
+volatile uint8_t addr_hi  = 0x00;
+volatile uint8_t addr_lo  = 0x01;
+volatile uint8_t addr_i2c = 0x23;
 
 uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
-uint8_t ee_addrhi, ee_addrlo EEMEM;
+uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
+
+#ifdef I2CEN
+volatile uint8_t rcvcnt;
+#endif
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -72,10 +77,11 @@ int main (void)
 		VGREEN = want_green = cache_green = eeprom_read_byte(&ee_green);
 		VBLUE  = want_blue  = cache_blue  = eeprom_read_byte(&ee_blue);
 
-		opmode  = eeprom_read_byte(&ee_mode);
-		speed   = eeprom_read_byte(&ee_speed);
-		addr_hi = eeprom_read_byte(&ee_addrhi);
-		addr_lo = eeprom_read_byte(&ee_addrlo);
+		opmode   = eeprom_read_byte(&ee_mode);
+		speed    = eeprom_read_byte(&ee_speed);
+		addr_hi  = eeprom_read_byte(&ee_addrhi);
+		addr_lo  = eeprom_read_byte(&ee_addrlo);
+		addr_i2c = eeprom_read_byte(&ee_addri2c);
 	} else {
 		opmode = OM_MODE_BLINKONOFF;
 		speed  = 32;
@@ -85,8 +91,11 @@ int main (void)
 	}
 
 
-#ifdef I2CEN
+#ifdef SI2CEN
 	USICR = /* _BV(USISIE) | */ _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
+#endif
+#ifdef I2CEN
+	USICR = _BV(USISIE) | _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
 #endif
 
 #ifdef TEMPERATURE
@@ -234,7 +243,57 @@ ISR(TIMER0_OVF_vect)
 }
 
 #ifdef I2CEN
-#ifndef TEMPERATURE
+
+ISR(USI_START_vect)
+{
+	rcvcnt = 8;
+
+	USISR = _BV(USISIF);
+}
+
+ISR(USI_OVF_vect)
+{
+	static uint8_t rcvbuf[8];
+
+
+	rcvbuf[--rcvcnt] = USIBR;
+
+	if (rcvcnt == 0) {
+		rcvcnt = sizeof(rcvbuf);
+		if ((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
+			step = animstep = 0;
+			opmode = rcvbuf[6];
+			speed  = rcvbuf[5];
+			if (opmode < 4) {
+				VRED   = cache_red   = rcvbuf[4];
+				VGREEN = cache_green = rcvbuf[3];
+				VBLUE  = cache_blue  = rcvbuf[2];
+			}
+			else if (opmode < 8) {
+				want_red   = cache_red   = rcvbuf[4];
+				want_green = cache_green = rcvbuf[3];
+				want_blue  = cache_blue  = rcvbuf[2];
+			}
+			if (eeprom_read_byte(&ee_valid) != 1) {
+				eeprom_write_byte(&ee_valid, 1);
+				eeprom_write_byte(&ee_addrhi, addr_hi);
+				eeprom_write_byte(&ee_addrlo, addr_lo);
+				eeprom_write_byte(&ee_addri2c, addr_i2c);
+			}
+			eeprom_write_byte(&ee_mode, opmode);
+			eeprom_write_byte(&ee_speed, speed);
+			eeprom_write_byte(&ee_red, rcvbuf[4]);
+			eeprom_write_byte(&ee_green, rcvbuf[3]);
+			eeprom_write_byte(&ee_blue, rcvbuf[2]);
+		}
+	}
+
+	USISR |= _BV(USIOIF);
+}
+
+#endif /* I2CEN */
+
+#ifdef SI2CEN
 
 ISR(USI_OVF_vect)
 {
@@ -278,5 +337,4 @@ ISR(USI_OVF_vect)
 	USISR |= _BV(USIOIF);
 }
 
-#endif /* !TEMPERATURE */
-#endif /* I2CEN */
+#endif /* SI2CEN */
