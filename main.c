@@ -80,8 +80,8 @@ int main (void)
 		addr_hi = eeprom_read_byte(&ee_addrhi);
 		addr_lo = eeprom_read_byte(&ee_addrlo);
 	} else {
-		opmode = OM_MODE_FADERAND;
-		speed  = 96;
+		opmode = OM_MODE_FADERGB;
+		speed  = 32;
 		VRED   = want_red   = cache_red   = 0;
 		VGREEN = want_green = cache_green = 255;
 		VBLUE  = want_blue  = cache_blue  = 255;
@@ -139,10 +139,10 @@ ISR(TIMER0_OVF_vect)
 #else
 
 	step++;
-	if ((step % 32) == 0)
+	if ((step % 64) == 0)
 		animstep++;
 
-	if (( ((step % ( ( speed | 1 ) * 1)) == 0) )
+	if (( ((step % ( ( speed ) * 1)) == 0) )
 			&& (opmode & OM_MODE_FADEANY ) ) {
 
 		if (VRED > want_red)
