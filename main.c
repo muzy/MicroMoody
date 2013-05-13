@@ -14,18 +14,15 @@
 #define VGREEN ( OCR1A   )
 #define VBLUE  ( is_blue )
 
-#define OM_M_MODE  ( _BV(7) | _BV(6) | _BV(5) )
-#define OM_M_SPEED ( _BV(0) | _BV(1) | _BV(2) | _BV(3) | _BV(4) )
-
-#define OM_MODE_STEADY        (     0  |     0  |     0  )
-#define OM_MODE_BLINKRGB      (     0  |     0  | _BV(5) )
-#define OM_MODE_BLINKRAND     (     0  | _BV(6) |     0  )
-#define OM_MODE_BLINKONOFF    (     0  | _BV(6) | _BV(5) )
-#define OM_MODE_FADEANY       ( _BV(7) |     0  |     0  )
-#define OM_MODE_FADETOSTEADY  ( _BV(7) |     0  |     0  )
-#define OM_MODE_FADERGB       ( _BV(7) |     0  | _BV(5) )
-#define OM_MODE_FADERAND      ( _BV(7) | _BV(6) |     0  )
-#define OM_MODE_FADEONOFF     ( _BV(7) | _BV(6) | _BV(5) )
+#define OM_MODE_STEADY        (  0)
+#define OM_MODE_BLINKRGB      (  1)
+#define OM_MODE_BLINKRAND     (  2)
+#define OM_MODE_BLINKONOFF    (  3)
+#define OM_MODE_FADEANY       (  4)
+#define OM_MODE_FADETOSTEADY  (  5)
+#define OM_MODE_FADERGB       (  6)
+#define OM_MODE_FADERAND      (  7)
+#define OM_MODE_FADEONOFF     (  8)
 
 #define TEMPERATURE_ZERO (210)
 
@@ -71,16 +68,16 @@ int main (void)
 	OCR1C = 0xff;
 
 	if (eeprom_read_byte(&ee_valid) == 1) {
-		opmode =              eeprom_read_byte(&ee_mode);
-		speed  =              eeprom_read_byte(&ee_speed);
-		VRED   = want_red   = eeprom_read_byte(&ee_red);
-		VGREEN = want_green = eeprom_read_byte(&ee_green);
-		VBLUE  = want_blue  = eeprom_read_byte(&ee_blue);
+		VRED   = want_red   = cache_red   = eeprom_read_byte(&ee_red);
+		VGREEN = want_green = cache_green = eeprom_read_byte(&ee_green);
+		VBLUE  = want_blue  = cache_blue  = eeprom_read_byte(&ee_blue);
 
+		opmode  = eeprom_read_byte(&ee_mode);
+		speed   = eeprom_read_byte(&ee_speed);
 		addr_hi = eeprom_read_byte(&ee_addrhi);
 		addr_lo = eeprom_read_byte(&ee_addrlo);
 	} else {
-		opmode = OM_MODE_FADERGB;
+		opmode = OM_MODE_BLINKONOFF;
 		speed  = 32;
 		VRED   = want_red   = cache_red   = 0;
 		VGREEN = want_green = cache_green = 255;
@@ -143,7 +140,7 @@ ISR(TIMER0_OVF_vect)
 		animstep++;
 
 	if (( ((step % ( ( speed ) * 1)) == 0) )
-			&& (opmode & OM_MODE_FADEANY ) ) {
+			&& (opmode >= 4) && (opmode < 8) ) {
 
 		if (VRED > want_red)
 			VRED--;
@@ -161,7 +158,7 @@ ISR(TIMER0_OVF_vect)
 
 	if (animstep == ( ( (uint16_t)speed + 1 ) << 2 ) ) {
 		animstep = 0;
-		switch (opmode & OM_M_MODE) {
+		switch (opmode) {
 			case OM_MODE_BLINKRGB:
 				if (!VBLUE && VRED && !VGREEN)
 					VGREEN = 255;
@@ -255,15 +252,15 @@ ISR(USI_OVF_vect)
 			step = animstep = 0;
 			opmode = rcvbuf[6];
 			speed  = rcvbuf[5];
-			if (opmode & OM_MODE_FADEANY) {
-				want_red   = cache_red   = rcvbuf[4];
-				want_green = cache_green = rcvbuf[3];
-				want_blue  = cache_blue  = rcvbuf[2];
-			}
-			else if ((opmode | OM_MODE_STEADY) == 0) {
+			if (opmode < 4) {
 				VRED   = cache_red   = rcvbuf[4];
 				VGREEN = cache_green = rcvbuf[3];
 				VBLUE  = cache_blue  = rcvbuf[2];
+			}
+			else if (opmode < 8) {
+				want_red   = cache_red   = rcvbuf[4];
+				want_green = cache_green = rcvbuf[3];
+				want_blue  = cache_blue  = rcvbuf[2];
 			}
 			if (eeprom_read_byte(&ee_valid) != 1) {
 				eeprom_write_byte(&ee_valid, 1);

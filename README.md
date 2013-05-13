@@ -31,13 +31,13 @@ Modes marked with `RGB` interpret the red/green/blue bytes, for the others
 they're not important.
 
 *   0: steady `RGB` light
-*  32: rainbow colors, hard transitions
-*  64: random colors, hard transitions
-*  96: `RGB` color, blink on/off
-* 128: steady light, fade to specified `RGB` color
-* 160: rainbow colors, fading transitions
-* 192: random colors, fading transitions
-* 224: `RGB` color, fade on/off
+*   1: rainbow colors, hard transitions
+*   2: random colors, hard transitions
+*   3: `RGB` color, blink on/off
+*   4: steady light, fade to specified `RGB` color
+*   5: rainbow colors, fading transitions
+*   6: random colors, fading transitions
+*   7: `RGB` color, fade on/off
 
 Mode and speed are saved and recalled after a power cycle.
 

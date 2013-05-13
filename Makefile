@@ -6,6 +6,7 @@ AVRFLASH ?= avrdude
 AVRNM ?= avr-nm
 AVROBJCOPY ?= avr-objcopy
 AVROBJDUMP ?= avr-objdump
+AVRSIZE ?= avr-size
 
 CFLAGS ?= -DI2CEN
 CFLAGS += -mmcu=${MCU} -DF_CPU=8000000UL
@@ -30,6 +31,7 @@ AVRFLAGS += -U flash:w:main.hex
 
 main.elf: main.c
 	${AVRCC} ${CFLAGS} -o $@ ${@:.elf=.c} -Wl,-Map=main.map,--cref
+	avr-size -d $@
 
 program: main.hex
 	${AVRFLASH} -p ${MCU} -c ${AVRDUDE_PROGRAMMER} ${AVRFLAGS}
