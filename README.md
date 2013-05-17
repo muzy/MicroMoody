@@ -44,6 +44,8 @@ they're not important.
 *   5: rainbow colors, fading transitions
 *   6: random colors, fading transitions
 *   7: `RGB` color, fade on/off
+*   8: show temperature (blue ~ cold, red ~ warm)
+       (buggy, only if compiled with -DTEMPERATURE)
 * 201: Set address to color bytes. payload high = red, payload low = green,
        i2c = blue. This will also set the operation mode to random fading
 

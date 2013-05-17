@@ -18,14 +18,14 @@
 #define OM_MODE_BLINKRGB      (  1)
 #define OM_MODE_BLINKRAND     (  2)
 #define OM_MODE_BLINKONOFF    (  3)
-#define OM_MODE_FADEANY       (  4)
-#define OM_MODE_FADETOSTEADY  (  5)
-#define OM_MODE_FADERGB       (  6)
-#define OM_MODE_FADERAND      (  7)
-#define OM_MODE_FADEONOFF     (  8)
+#define OM_MODE_FADETOSTEADY  (  4)
+#define OM_MODE_FADERGB       (  5)
+#define OM_MODE_FADERAND      (  6)
+#define OM_MODE_FADEONOFF     (  7)
+#define OM_MODE_TEMPERATURE   (  8)
 #define OM_MODE_SETADDR       (201)
 
-#define TEMPERATURE_ZERO (210)
+#define TEMPERATURE_ZERO (355)
 
 volatile uint8_t want_blue,  cache_blue;
 volatile uint8_t want_green, cache_green;
@@ -124,26 +124,14 @@ ISR(TIMER0_OVF_vect)
 {
 
 #ifdef TEMPERATURE
+	int16_t thermal = 0;
 
-	int16_t thermal = ADCL;
-	thermal |= (ADCH << 8);
-	thermal -= TEMPERATURE_ZERO;
-
-	if (thermal < 0)
-		VBLUE = 0xff;
-	else if (thermal < 32)
-		VBLUE = pwmtable[31 - thermal];
-	else
-		VBLUE = 0;
-
-	if (thermal < 20)
-		VRED = 0;
-	else if (thermal < 52)
-		VRED = pwmtable[thermal - 20];
-	else
-		VRED = 0xff;
-
-#else
+	if (opmode == OM_MODE_TEMPERATURE) {
+		thermal = ADCL;
+		thermal |= (ADCH << 8);
+		thermal -= TEMPERATURE_ZERO;
+	}
+#endif
 
 	step++;
 	if ((step % 64) == 0)
@@ -235,10 +223,27 @@ ISR(TIMER0_OVF_vect)
 				break;
 			case OM_MODE_FADETOSTEADY:
 				break;
+#ifdef TEMPERATURE
+			case OM_MODE_TEMPERATURE:
+				VGREEN = 0;
+
+				if (thermal < 0)
+					VBLUE = 0xff;
+				else if (thermal < 32)
+					VBLUE = pwmtable[31 - thermal];
+				else
+					VBLUE = 0;
+
+				if (thermal < 20)
+					VRED = 0;
+				else if (thermal < 52)
+					VRED = pwmtable[thermal - 20];
+				else
+					VRED = 0xff;
+				break;
+#endif /* TEMPERATURE */
 		}
 	}
-
-#endif /* !TEMPERATURE */
 
 	asm("wdr");
 }
