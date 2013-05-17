@@ -154,7 +154,7 @@ ISR(TIMER0_OVF_vect)
 			VBLUE++;
 	}
 
-	if (animstep == ( ( (uint16_t)speed + 1 ) << 2 ) ) {
+	if (animstep == ( ( (uint16_t)speed + 8 ) << 2 ) ) {
 		animstep = 0;
 		switch (opmode) {
 			case OM_MODE_BLINKRGB:
