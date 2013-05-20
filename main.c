@@ -102,7 +102,9 @@ int main (void)
 #ifdef TEMPERATURE
 
 	ADMUX = _BV(REFS1) | 0x0f;
-	ADCSRA = _BV(ADEN) | _BV(ADSC);
+	ADCSRB = _BV(ADTS2);
+	ADCSRA = _BV(ADEN) | _BV(ADATE);
+	ADCSRA |= _BV(ADSC);
 
 #endif /* TEMPERATURE */
 
