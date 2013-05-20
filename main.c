@@ -267,7 +267,8 @@ ISR(USI_OVF_vect)
 	if (rcvcnt == 0) {
 		rcvcnt = sizeof(rcvbuf);
 		if ((rcvbuf[7] == addr_i2c) &&
-				(rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
+				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
+				 || ((rcvbuf[1] == 0xff) && (rcvbuf[0] == 0xff)))) {
 			step = animstep = 0;
 			opmode = rcvbuf[6];
 			speed  = rcvbuf[5];
