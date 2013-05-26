@@ -74,3 +74,18 @@ At the time of this writing, a newly flashed MicroMoody with default address
 will run the RGB blink mode (starting with yellow), while a newly flashed
 MicroMoody with only the addresses changed and no mode set will run in
 random fading mode.
+
+## I2C master operation
+
+When compiled with -DI2CMASTER (disabled by default), the MicroMoody will act
+as I2C bus master. After each transition (after half the time until the next
+transition has passed) it will send its current color and fade speed as a
+broadcast (payload address 0xffff) over the bus. The I2C address used will be
+the MicroMoody's I2C address (see above for default).
+
+If it is operating with hard transitions, so will the slaves. same for soft
+(fading) transitions.
+
+This will not work without hardware pullups on SDA and SCL.
+Also, it is currently so badly implemented that it causes a visible flicker on
+the blue LED channel. This may be fixed in future versions.

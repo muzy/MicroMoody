@@ -27,6 +27,10 @@
 
 #define TEMPERATURE_ZERO (355)
 
+#ifdef I2CMASTER
+#undef I2CEN
+#endif
+
 volatile uint8_t want_blue,  cache_blue;
 volatile uint8_t want_green, cache_green;
 volatile uint8_t want_red,   cache_red;
@@ -92,9 +96,6 @@ int main (void)
 	}
 
 
-#ifdef SI2CEN
-	USICR = /* _BV(USISIE) | */ _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
-#endif
 #ifdef I2CEN
 	USICR = _BV(USISIE) | _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
 #endif
@@ -121,6 +122,95 @@ int main (void)
 
 	return 0;
 }
+
+#ifdef I2CMASTER
+
+#define TWI_DELAY_SHORT 4
+#define TWI_DELAY_LONG  8
+
+/*
+ * since we're doing software pwm, we can't wait for slaves. so this will
+ * probably only work on a bus exclusively used by MicroMoodies.
+ * TODO: move soft pwm to interrupt handler?
+ * Also TODO: Use hardware shift register (USIDR). Fixes welcome.
+ */
+
+void sda_high() {
+	DDRB  &= ~_BV(PB0);
+//	PORTB |=  _BV(PB0);
+}
+
+void sda_low() {
+//	PORTB &= ~_BV(PB0);
+	DDRB  |=  _BV(PB0);
+}
+
+void scl_high() {
+	DDRB  &= ~_BV(PB2);
+//	PORTB |=  _BV(PB2);
+}
+
+void scl_low() {
+//	PORTB &= ~_BV(PB2);
+	DDRB  |=  _BV(PB2);
+}
+
+void twi_delay(uint8_t delay)
+{
+	uint8_t i;
+	for (i = 0; i < delay; i++)
+		asm("nop");
+}
+
+void twi_tx_byte(uint8_t byte)
+{
+	int8_t i;
+
+	for (i = 7; i >= 0; i--) {
+		twi_delay(TWI_DELAY_SHORT);
+		if (byte & _BV(i))
+			sda_high();
+		else
+			sda_low();
+		twi_delay(TWI_DELAY_SHORT);
+		scl_high();
+		twi_delay(TWI_DELAY_SHORT);
+		scl_low();
+	}
+	twi_delay(TWI_DELAY_LONG);
+}
+
+void twi_tx_command()
+{
+
+	sda_low();
+	twi_delay(TWI_DELAY_LONG);
+	scl_low();
+	twi_delay(TWI_DELAY_LONG);
+
+	twi_tx_byte(addr_i2c);
+	if ((opmode >= 4) && (opmode < 8)) {
+		twi_tx_byte(OM_MODE_FADETOSTEADY);
+		twi_tx_byte(speed);
+		twi_tx_byte(want_red);
+		twi_tx_byte(want_green);
+		twi_tx_byte(want_blue);
+	}
+	else {
+		twi_tx_byte(OM_MODE_STEADY);
+		twi_tx_byte(speed);
+		twi_tx_byte(VRED);
+		twi_tx_byte(VGREEN);
+		twi_tx_byte(VBLUE);
+	}
+	twi_tx_byte(0xff);
+	twi_tx_byte(0xff);
+	scl_high();
+	sda_high();
+
+}
+
+#endif /* I2CMASTER */
 
 ISR(TIMER0_OVF_vect)
 {
@@ -155,6 +245,11 @@ ISR(TIMER0_OVF_vect)
 		if (VBLUE < want_blue)
 			VBLUE++;
 	}
+
+#ifdef I2CMASTER
+	if (animstep == ( ( (uint16_t)speed + 8) << 1) )
+		twi_tx_command();
+#endif
 
 	if (animstep == ( ( (uint16_t)speed + 8 ) << 2 ) ) {
 		animstep = 0;
@@ -320,49 +415,3 @@ ISR(USI_OVF_vect)
 }
 
 #endif /* I2CEN */
-
-#ifdef SI2CEN
-
-ISR(USI_OVF_vect)
-{
-	static uint8_t rcvbuf[7];
-	static uint8_t rcvcnt = sizeof(rcvbuf);
-
-
-	rcvbuf[--rcvcnt] = USIBR;
-
-	// XXX rcvbuf[0] doesn't work reliable. wtf.
-
-	if (rcvcnt == 0) {
-		rcvcnt = sizeof(rcvbuf);
-		if ((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo)) {
-			step = animstep = 0;
-			opmode = rcvbuf[6];
-			speed  = rcvbuf[5];
-			if (opmode < 4) {
-				VRED   = cache_red   = rcvbuf[4];
-				VGREEN = cache_green = rcvbuf[3];
-				VBLUE  = cache_blue  = rcvbuf[2];
-			}
-			else if (opmode < 8) {
-				want_red   = cache_red   = rcvbuf[4];
-				want_green = cache_green = rcvbuf[3];
-				want_blue  = cache_blue  = rcvbuf[2];
-			}
-			if (eeprom_read_byte(&ee_valid) != 1) {
-				eeprom_write_byte(&ee_valid, 1);
-				eeprom_write_byte(&ee_addrhi, addr_hi);
-				eeprom_write_byte(&ee_addrlo, addr_lo);
-			}
-			eeprom_write_byte(&ee_mode, opmode);
-			eeprom_write_byte(&ee_speed, speed);
-			eeprom_write_byte(&ee_red, rcvbuf[4]);
-			eeprom_write_byte(&ee_green, rcvbuf[3]);
-			eeprom_write_byte(&ee_blue, rcvbuf[2]);
-		}
-	}
-
-	USISR |= _BV(USIOIF);
-}
-
-#endif /* SI2CEN */
