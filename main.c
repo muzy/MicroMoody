@@ -180,40 +180,15 @@ void twi_tx_byte(uint8_t byte)
 	twi_delay(TWI_DELAY_LONG);
 }
 
-void twi_tx_command()
-{
-
-	sda_low();
-	twi_delay(TWI_DELAY_LONG);
-	scl_low();
-	twi_delay(TWI_DELAY_LONG);
-
-	twi_tx_byte(addr_i2c);
-	if ((opmode >= 4) && (opmode < 8)) {
-		twi_tx_byte(OM_MODE_FADETOSTEADY);
-		twi_tx_byte(speed);
-		twi_tx_byte(want_red);
-		twi_tx_byte(want_green);
-		twi_tx_byte(want_blue);
-	}
-	else {
-		twi_tx_byte(OM_MODE_STEADY);
-		twi_tx_byte(speed);
-		twi_tx_byte(VRED);
-		twi_tx_byte(VGREEN);
-		twi_tx_byte(VBLUE);
-	}
-	twi_tx_byte(0xff);
-	twi_tx_byte(0xff);
-	scl_high();
-	sda_high();
-
-}
 
 #endif /* I2CMASTER */
 
 ISR(TIMER0_OVF_vect)
 {
+
+#ifdef I2CMASTER
+	static uint8_t i2cstep = 0;
+#endif
 
 #ifdef TEMPERATURE
 	int16_t thermal = 0;
@@ -247,12 +222,46 @@ ISR(TIMER0_OVF_vect)
 	}
 
 #ifdef I2CMASTER
-	if (animstep == ( ( (uint16_t)speed + 8) << 1) )
-		twi_tx_command();
+	if ((animstep == ( ( (uint16_t)speed + 4) << 1) ) && (i2cstep <= 3)) {
+		switch (i2cstep) {
+			case 0:
+				sda_low();
+				break;
+			case 1:
+				scl_low();
+				break;
+			case 2:
+				twi_tx_byte(addr_i2c);
+				if ((opmode >= 4) && (opmode < 8)) {
+					twi_tx_byte(OM_MODE_FADETOSTEADY);
+					twi_tx_byte(speed);
+					twi_tx_byte(want_red);
+					twi_tx_byte(want_green);
+					twi_tx_byte(want_blue);
+				}
+				else {
+					twi_tx_byte(OM_MODE_STEADY);
+					twi_tx_byte(speed);
+					twi_tx_byte(VRED);
+					twi_tx_byte(VGREEN);
+					twi_tx_byte(VBLUE);
+				}
+				break;
+			case 3:
+				twi_tx_byte(0xff);
+				twi_tx_byte(0xff);
+				scl_high();
+				sda_high();
+				break;
+		}
+
+		i2cstep++;
+	}
 #endif
 
 	if (animstep == ( ( (uint16_t)speed + 8 ) << 2 ) ) {
 		animstep = 0;
+		i2cstep = 0;
 		switch (opmode) {
 			case OM_MODE_BLINKRGB:
 				if (!VBLUE && VRED && !VGREEN)
