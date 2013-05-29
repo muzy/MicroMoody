@@ -87,5 +87,3 @@ If it is operating with hard transitions, so will the slaves. same for soft
 (fading) transitions.
 
 This will not work without hardware pullups on SDA and SCL.
-Also, it is currently so badly implemented that it causes a visible flicker on
-the blue LED channel. This may be fixed in future versions.
