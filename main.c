@@ -261,7 +261,9 @@ ISR(TIMER0_OVF_vect)
 
 	if (animstep == ( ( (uint16_t)speed + 8 ) << 2 ) ) {
 		animstep = 0;
+#ifdef I2CMASTER
 		i2cstep = 0;
+#endif
 		switch (opmode) {
 			case OM_MODE_BLINKRGB:
 				if (!VBLUE && VRED && !VGREEN)
