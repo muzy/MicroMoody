@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2013, Daniel Friesel <derf@chaosdorf.de>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ */
+
 #include <avr/eeprom.h>
 #include <avr/io.h>
 #include <stdlib.h>
