@@ -105,7 +105,7 @@ int main (void)
 
 
 #ifdef I2CEN
-	USICR = _BV(USISIE) | _BV(USIOIE) | _BV(USIWM1) | _BV(USICS1);
+	USICR = _BV(USISIE) | _BV(USIOIE) | _BV(USIWM1) | _BV(USIWM0) | _BV(USICS1);
 #endif
 
 #ifdef TEMPERATURE
@@ -368,21 +368,41 @@ ISR(TIMER0_OVF_vect)
 
 ISR(USI_START_vect)
 {
-	rcvcnt = 8;
+	rcvcnt = 7;
 
+	USICR |= _BV(USIOIE);
 	USISR = _BV(USISIF);
 }
 
 ISR(USI_OVF_vect)
 {
-	static uint8_t rcvbuf[8];
+	static uint8_t rcvbuf[7];
+	static uint8_t wait_ack = 0;
 
+	if (rcvcnt == sizeof(rcvbuf)) {
+		if (USIBR == addr_i2c) {
+			rcvcnt |= 0x10;
+			USISR = 0x0e;
+			//DDRB |= _BV(DDB0);
+			wait_ack = 1;
+		}
+		else
+			USISR &= ~_BV(USIOIE);
+	}
+	else if (wait_ack) {
+		//DDRB &= ~_BV(DDB0);
+		wait_ack = 0;
+	}
+	else {
+		rcvbuf[(--rcvcnt & 0x0f)] = USIBR;
+		USISR = 0x0e;
+		//DDRB |= _BV(DDB0);
+		wait_ack = 1;
+	}
 
-	rcvbuf[--rcvcnt] = USIBR;
-
-	if (rcvcnt == 0) {
+	if ((rcvcnt & 0x0f) == 0) {
 		rcvcnt = sizeof(rcvbuf);
-		if ((rcvbuf[7] == addr_i2c) &&
+		if (
 				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
 				 || ((rcvbuf[1] == 0xff) && (rcvbuf[0] == 0xff)))) {
 			step = animstep = 0;
