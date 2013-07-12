@@ -35,6 +35,9 @@
 
 #define TEMPERATURE_ZERO (355)
 
+#define P_SDA PB0
+#define P_SCL PB2
+
 #ifdef I2CMASTER
 #undef I2CEN
 #endif
@@ -53,12 +56,11 @@ volatile uint8_t addr_hi  = 0x00;
 volatile uint8_t addr_lo  = 0x01;
 volatile uint8_t addr_i2c = 0x23;
 
+volatile enum {
+	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;
+
 uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
 uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
-
-#ifdef I2CEN
-volatile uint8_t rcvcnt;
-#endif
 
 const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
@@ -105,7 +107,14 @@ int main (void)
 
 
 #ifdef I2CEN
-	USICR = _BV(USISIE) | _BV(USIOIE) | _BV(USIWM1) | _BV(USIWM0) | _BV(USICS1);
+	USICR = _BV(USIWM1) | _BV(USICS1);
+	USISR = 0xf0;
+	DDRB &= ~_BV(P_SDA);
+	PORTB &= ~_BV(P_SDA);
+	DDRB |= _BV(P_SCL);
+	PORTB |= _BV(P_SCL);
+	USICR |= _BV(USISIE);
+
 #endif
 
 #ifdef TEMPERATURE
@@ -368,39 +377,51 @@ ISR(TIMER0_OVF_vect)
 
 ISR(USI_START_vect)
 {
-	rcvcnt = 7;
-
-	USICR |= _BV(USIOIE);
-	USISR = _BV(USISIF);
+	// Wait for SCL to go low to ensure the "Start Condition" has completed.
+	// otherwise the counter will count the transition
+	while ( PINB & _BV(P_SCL) ) ;
+	USISR = 0xf0; // write 1 to clear flags; clear counter
+	// enable USI interrupt on overflow; SCL goes low on overflow
+	USICR |= _BV(USIOIE) | _BV(USIWM0);
+	comm_status = S_NONE;
 }
 
 ISR(USI_OVF_vect)
 {
 	static uint8_t rcvbuf[7];
-	static uint8_t wait_ack = 0;
+	static uint8_t rcvcnt = sizeof(rcvbuf);
 
-	if (rcvcnt == sizeof(rcvbuf)) {
-		if (USIBR == addr_i2c) {
-			rcvcnt |= 0x10;
-			USISR = 0x0e;
-			//DDRB |= _BV(DDB0);
-			wait_ack = 1;
-		}
-		else
-			USISR &= ~_BV(USIOIE);
-	}
-	else if (wait_ack) {
-		//DDRB &= ~_BV(DDB0);
-		wait_ack = 0;
-	}
-	else {
-		rcvbuf[(--rcvcnt & 0x0f)] = USIBR;
-		USISR = 0x0e;
-		//DDRB |= _BV(DDB0);
-		wait_ack = 1;
+	switch (comm_status) {
+		case S_NONE:
+			if (USIDR == addr_i2c) {
+				rcvcnt = sizeof(rcvbuf);
+				DDRB |= _BV(P_SDA);
+				USISR = 0x0e;
+				comm_status = S_ACK;
+			}
+			else {
+				USICR &= ~(_BV(USIOIE) | _BV(USIWM0));
+			}
+			break;
+		case S_ACK:
+			DDRB &= ~_BV(P_SDA);
+			comm_status = S_BYTE;
+			break;
+		case S_BYTE:
+			rcvbuf[--rcvcnt] = USIDR;
+			if (rcvcnt) {
+				DDRB |= _BV(P_SDA);
+				USISR = 0x0e;
+				comm_status = S_ACK;
+			}
+			else {
+				comm_status = S_NONE;
+				USISR &= ~(_BV(USIOIE) | _BV(USIWM0));
+			}
+			break;
 	}
 
-	if ((rcvcnt & 0x0f) == 0) {
+	if (rcvcnt == 0) {
 		rcvcnt = sizeof(rcvbuf);
 		if (
 				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
