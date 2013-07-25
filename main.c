@@ -54,7 +54,7 @@ volatile uint16_t animstep = 0;
 
 volatile uint8_t addr_hi  = 0x00;
 volatile uint8_t addr_lo  = 0x01;
-volatile uint8_t addr_i2c = 0x23;
+volatile uint8_t addr_i2c = 0x22;
 
 volatile enum {
 	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;

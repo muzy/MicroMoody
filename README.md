@@ -8,7 +8,7 @@ remote-controlled via I2C.
 This is enabled by the `-DI2CEN` compile flag, which is set by default in the
 Makefile.
 
-After sending the 7bit address and the r/w bit (set to write),
+After sending the 7bit address and the r/w bit (set to 0 = write),
 the bus master must send the following 7 bytes to the MicroMoody:
 
 * opmode
@@ -19,7 +19,7 @@ the bus master must send the following 7 bytes to the MicroMoody:
 * payload address (high byte)
 * payload address (low byte)
 
-The default I2C address is 0x11 (the first byte with write flag set is 0x23).
+The default I2C address is 0x11 (the first byte with write flag set is 0x22).
 The default payload address is 0x0001. The idea behind this distinction is
 to use the I2C address to talk to any micromoody, and the payload address to
 select the specific micromoody to address. This way, you can have various
