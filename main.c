@@ -54,7 +54,7 @@ volatile uint16_t animstep = 0;
 
 volatile uint8_t addr_hi  = 0x00;
 volatile uint8_t addr_lo  = 0x01;
-volatile uint8_t addr_i2c = 0x22;
+volatile uint8_t addr_i2c = 0x11;
 
 volatile enum {
 	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;
@@ -393,7 +393,7 @@ ISR(USI_OVF_vect)
 
 	switch (comm_status) {
 		case S_NONE:
-			if (USIDR == addr_i2c) {
+			if ((USIDR & 0xfe) == (addr_i2c << 1)) {
 				rcvcnt = sizeof(rcvbuf);
 				DDRB |= _BV(P_SDA);
 				USISR = 0x0e;
@@ -442,7 +442,7 @@ ISR(USI_OVF_vect)
 			else if (opmode == OM_MODE_SETADDR) {
 				addr_hi  = rcvbuf[4];
 				addr_lo  = rcvbuf[3];
-				addr_i2c = rcvbuf[2] | 1;
+				addr_i2c = rcvbuf[2];
 
 				opmode = OM_MODE_FADERAND;
 				speed = 64;
@@ -458,7 +458,7 @@ ISR(USI_OVF_vect)
 				eeprom_write_byte(&ee_valid, 1);
 				eeprom_write_byte(&ee_addrhi, addr_hi);
 				eeprom_write_byte(&ee_addrlo, addr_lo);
-				eeprom_write_byte(&ee_addri2c, addr_i2c | 1);
+				eeprom_write_byte(&ee_addri2c, addr_i2c);
 			}
 
 			if (opmode < 8) {
