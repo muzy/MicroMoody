@@ -142,8 +142,8 @@ int main (void)
 
 #ifdef I2CMASTER
 
-#define TWI_DELAY_SHORT 4
-#define TWI_DELAY_LONG  8
+#define TWI_DELAY_SHORT 8
+#define TWI_DELAY_LONG  42
 
 /*
  * since we're doing software pwm, we can't wait for slaves. so this will
@@ -154,21 +154,17 @@ int main (void)
 
 void sda_high() {
 	DDRB  &= ~_BV(PB0);
-//	PORTB |=  _BV(PB0);
 }
 
 void sda_low() {
-//	PORTB &= ~_BV(PB0);
 	DDRB  |=  _BV(PB0);
 }
 
 void scl_high() {
 	DDRB  &= ~_BV(PB2);
-//	PORTB |=  _BV(PB2);
 }
 
 void scl_low() {
-//	PORTB &= ~_BV(PB2);
 	DDRB  |=  _BV(PB2);
 }
 
@@ -183,9 +179,9 @@ void twi_tx_byte(uint8_t byte)
 {
 	int8_t i;
 
-	for (i = 7; i >= 0; i--) {
+	for (i = 7; i >= -1; i--) {
 		twi_delay(TWI_DELAY_SHORT);
-		if (byte & _BV(i))
+		if ((i < 0) || (byte & _BV(i)))
 			sda_high();
 		else
 			sda_low();
@@ -248,7 +244,7 @@ ISR(TIMER0_OVF_vect)
 				scl_low();
 				break;
 			case 2:
-				twi_tx_byte(addr_i2c);
+				twi_tx_byte(addr_i2c << 1);
 				if ((opmode >= 4) && (opmode < 8)) {
 					twi_tx_byte(OM_MODE_FADETOSTEADY);
 					twi_tx_byte(speed);
