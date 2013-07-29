@@ -32,6 +32,9 @@
 #define OM_MODE_FADEONOFF     (  7)
 #define OM_MODE_TEMPERATURE   (  8)
 #define OM_MODE_SETADDR       (201)
+#define OM_MODE_GETTEMP       (202)
+
+#define SM_TEMPERATURE        ( 10)
 
 #define TEMPERATURE_ZERO (355)
 
@@ -47,7 +50,7 @@ volatile uint8_t want_green, cache_green;
 volatile uint8_t want_red,   cache_red;
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode, speed;
+volatile uint8_t opmode, speed, sendmode = 0;
 
 volatile uint8_t step = 0;
 volatile uint16_t animstep = 0;
@@ -57,7 +60,7 @@ volatile uint8_t addr_lo  = 0x01;
 volatile uint8_t addr_i2c = 0x11;
 
 volatile enum {
-	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;
+	S_NONE, S_ACK_RX, S_ACK_TX1, S_ACK_TX2, S_BYTE_RX, S_BYTE_TX } comm_status = S_NONE;
 
 uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
 uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
@@ -393,27 +396,57 @@ ISR(USI_OVF_vect)
 				rcvcnt = sizeof(rcvbuf);
 				DDRB |= _BV(P_SDA);
 				USISR = 0x0e;
-				comm_status = S_ACK;
+				if (USIDR & 0x01)
+					comm_status = S_ACK_TX1;
+				else
+					comm_status = S_ACK_RX;
 			}
 			else {
 				USICR &= ~(_BV(USIOIE) | _BV(USIWM0));
 			}
 			break;
-		case S_ACK:
+		case S_ACK_RX:
 			DDRB &= ~_BV(P_SDA);
-			comm_status = S_BYTE;
+			comm_status = S_BYTE_RX;
 			break;
-		case S_BYTE:
+		case S_BYTE_RX:
 			rcvbuf[--rcvcnt] = USIDR;
 			if (rcvcnt) {
 				DDRB |= _BV(P_SDA);
 				USISR = 0x0e;
-				comm_status = S_ACK;
+				comm_status = S_ACK_RX;
 			}
 			else {
 				comm_status = S_NONE;
 				USISR &= ~(_BV(USIOIE) | _BV(USIWM0));
 			}
+			break;
+		case S_ACK_TX1:
+#ifdef TEMPERATURE
+			if (sendmode == SM_TEMPERATURE)
+				USIDR = ADCL;
+#endif
+			PORTB |= _BV(P_SDA);
+			comm_status = S_BYTE_TX;
+			break;
+		case S_ACK_TX2:
+			if (USIDR & 0x01)
+				comm_status = S_NONE;
+			else {
+#ifdef TEMPERATURE
+				if (sendmode == SM_TEMPERATURE)
+					USIDR = ADCH;
+#endif
+				PORTB |= _BV(P_SDA);
+				DDRB  |= _BV(P_SDA);
+				comm_status = S_BYTE_TX;
+			}
+			break;
+		case S_BYTE_TX:
+			DDRB  &= ~_BV(P_SDA);
+			PORTB &= ~_BV(P_SDA);
+			USISR = 0x0e;
+			comm_status = S_ACK_TX2;
 			break;
 	}
 
@@ -422,32 +455,37 @@ ISR(USI_OVF_vect)
 		if (
 				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
 				 || ((rcvbuf[1] == 0xff) && (rcvbuf[0] == 0xff)))) {
-			step = animstep = 0;
-			opmode = rcvbuf[6];
-			speed  = rcvbuf[5];
-			if (opmode < 4) {
-				VRED   = cache_red   = rcvbuf[4];
-				VGREEN = cache_green = rcvbuf[3];
-				VBLUE  = cache_blue  = rcvbuf[2];
+			step = animstep = sendmode = 0;
+			if (rcvbuf[6] < 8) {
+				opmode = rcvbuf[6];
+				speed  = rcvbuf[5];
+				if (opmode < 4) {
+					VRED   = cache_red   = rcvbuf[4];
+					VGREEN = cache_green = rcvbuf[3];
+					VBLUE  = cache_blue  = rcvbuf[2];
+				}
+				else if (opmode < 8) {
+					want_red   = cache_red   = rcvbuf[4];
+					want_green = cache_green = rcvbuf[3];
+					want_blue  = cache_blue  = rcvbuf[2];
+				}
 			}
-			else if (opmode < 8) {
-				want_red   = cache_red   = rcvbuf[4];
-				want_green = cache_green = rcvbuf[3];
-				want_blue  = cache_blue  = rcvbuf[2];
-			}
-			else if (opmode == OM_MODE_SETADDR) {
+			else if (rcvbuf[6] == OM_MODE_SETADDR) {
 				addr_hi  = rcvbuf[4];
 				addr_lo  = rcvbuf[3];
 				addr_i2c = rcvbuf[2];
 
-				opmode = OM_MODE_FADERAND;
-				speed = 64;
+				opmode = OM_MODE_FADERGB;
+				speed = 32;
 				rcvbuf[4] = 0;
 				rcvbuf[3] = 255;
 				rcvbuf[2] = 0;
 
 				// force address rewrite
 				eeprom_write_byte(&ee_valid, 0);
+			}
+			else if (rcvbuf[6] == OM_MODE_GETTEMP) {
+				sendmode = SM_TEMPERATURE;
 			}
 
 			if (eeprom_read_byte(&ee_valid) != 1) {
