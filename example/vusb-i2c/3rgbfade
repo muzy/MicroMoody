@@ -1,0 +1,22 @@
+#!/bin/sh
+
+esleep=0.3
+lsleep=0.3
+
+propcolour() {
+	vusb-i2cset 17 4 8 "$@" 0 1
+	sleep ${esleep}
+	vusb-i2cset 17 4 8 "$@" 0 2
+	sleep ${esleep}
+	vusb-i2cset 17 4 8 "$@" 0 3
+	sleep ${lsleep}
+}
+
+while true; do
+	propcolour 255   0   0
+	propcolour 255 255   0
+	propcolour   0 255   0
+	propcolour   0 255 255
+	propcolour   0   0 255
+	propcolour 255   0 255
+done
