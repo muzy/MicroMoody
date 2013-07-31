@@ -47,12 +47,12 @@ they're not important.
 *   7: `RGB` color, fade on/off
 *   8: show temperature (blue ~ cold, red ~ warm)
        (buggy, only if compiled with -DTEMPERATURE)
+*  32: Save last mode command (opmode < 32) to EEPROM to be recalled after a
+       power cycle
 * 201: Set address to color bytes. payload high = red, payload low = green,
        i2c = blue. This will also set the operation mode to random fading.
        Note that for i2c, the least significant 7 bit are the address, while
        the most significant bit is ignored
-
-Mode and speed are saved and recalled after a power cycle.
 
 ## temperature sensor
 
@@ -73,7 +73,7 @@ for more information.
 At the time of this writing, a newly flashed MicroMoody with default address
 will run the RGB blink mode (starting with yellow), while a newly flashed
 MicroMoody with only the addresses changed and no mode set will run in
-random fading mode.
+rgb fading mode (starting with green).
 
 ## I2C master operation
 
