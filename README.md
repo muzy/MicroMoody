@@ -12,7 +12,7 @@ After sending the 7bit address and the r/w bit (set to 0 = write),
 the bus master must send the following 7 bytes to the MicroMoody:
 
 * opmode
-* fade/blink speed
+* fade/blink delay
 * red value
 * green value
 * blue value
@@ -30,7 +30,6 @@ Commands with the broadcast payload address of 0xffff are always accepted, even
 when they contain the "set address" opmode.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
-the speed is inverted, so 0 is fastest, 255 is slowest.
 
 ### opmode
 
@@ -79,7 +78,7 @@ rgb fading mode (starting with green).
 
 When compiled with -DI2CMASTER (disabled by default), the MicroMoody will act
 as I2C bus master. After each transition (after half the time until the next
-transition has passed) it will send its current color and fade speed as a
+transition has passed) it will send its current color and fade delay as a
 broadcast (payload address 0xffff) over the bus. The I2C address used will be
 the MicroMoody's I2C address (see above for default).
 
