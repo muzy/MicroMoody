@@ -65,12 +65,12 @@ Enabled by `-DTEMPERATURE`. Disables I2C and fading. Not finished yet.
 Uses the LED to display the current ambient temperature, blue means cold,
 red means warm.
 
-## remote control via USB -> I2C bridge
+## remote control
 
-[Example firmware and
-software](http://lib.finalrewind.org/a/PowerSwitch.2012-12-08.i2c.tar.bz2)
-based on [VUSB](http://vusb.wikidot.com/hardware). Refer to their website
-for more information.
+`examples/arduino/SerialToI2C` sends serial data onto the I2C bus.
+
+[vusb-i2c](https://github.com/derf/vusb-i2c) can be used to control an I2C
+bus with an almost-standard VUSB circuit.
 
 ## recognizing the firmware state
 
