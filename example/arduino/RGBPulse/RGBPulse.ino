@@ -12,7 +12,7 @@
 
 #include <Wire.h>
 
-byte default_delay = 12;
+byte default_delay = 16;
 
 void i2csend(byte mode, byte spd, byte red, byte green, byte blue, byte addrhi, byte addrlo)
 {

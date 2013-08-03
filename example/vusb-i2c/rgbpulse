@@ -1,6 +1,6 @@
 #!/bin/sh
 
-delay=12
+delay=16
 
 vusb-i2cset 17 64 ${delay} 255   0   0 255 255
 vusb-i2cset 17 65 ${delay}   0   0   0 255 255
