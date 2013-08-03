@@ -46,8 +46,13 @@ they're not important.
 *   7: `RGB` color, fade on/off
 *   8: show temperature (blue ~ cold, red ~ warm)
        (buggy, only if compiled with -DTEMPERATURE)
-* 240: Save last mode command (opmode &le; 8) to EEPROM to be recalled after a
-       power cycle
+*  63: Run animation. It will start in slot 1 and end in the slot last set
+*  64: Save RGB + delay in animation slot 1
+* ...
+* 127: Save RGB + delay in animation slot 64
+* 240: Save last mode command (opmode &lt; 64) to EEPROM to be recalled after a
+       power cycle. NOTE: if the current opmode is 63 (animation), this may
+       take up to 1 second (~12ms for each used animation slot)
 * 241: Set address to color bytes. payload high = red, payload low = green,
        i2c = blue. This will also set the operation mode to random fading.
        Note that for i2c, the least significant 7 bit are the address, while
