@@ -31,8 +31,8 @@
 #define OM_MODE_FADERAND      (  6)
 #define OM_MODE_FADEONOFF     (  7)
 #define OM_MODE_TEMPERATURE   (  8)
-#define OM_MODE_SAVESTATE     ( 32)
-#define OM_MODE_SETADDR       (201)
+#define OM_MODE_SAVESTATE     (240)
+#define OM_MODE_SETADDR       (241)
 
 #define TEMPERATURE_ZERO (355)
 
