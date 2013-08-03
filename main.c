@@ -250,7 +250,7 @@ ISR(TIMER0_OVF_vect)
 	}
 
 #ifdef I2CMASTER
-	if ((animstep == ( ( (uint16_t)speed + 8) << 0) ) && (i2cstep <= 3)) {
+	if ((animstep == ( ( (uint16_t)speed) << 0) ) && (i2cstep <= 3)) {
 		switch (i2cstep) {
 			case 0:
 				sda_low();
@@ -287,7 +287,7 @@ ISR(TIMER0_OVF_vect)
 	}
 #endif
 
-	if (animstep == ( ( (uint16_t)speed + 8 ) << 2 ) ) {
+	if (animstep == ( ( (uint16_t)speed ) << 2 ) ) {
 		animstep = 0;
 #ifdef I2CMASTER
 		i2cstep = 0;
