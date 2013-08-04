@@ -1,40 +1,50 @@
 # MicroMoody
 
-RGB LED driven by an ATTiny85. Supports various modes of operation and can be
-remote-controlled via I2C.
+RGB LED driven by an ATTiny85. Largely blink(1)-compatible, except that it uses
+I2C instead of USB.
+
+## setup
+
+See <https://wiki.chaosdorf.de/MicroMoody> and
+<https://wiki.raumzeitlabor.de/wiki/MicroMoody> for soldering instructions.
+
+For the firmware, run `make && make program`. You may need to edit the
+Makefile to fit your programmer, it's written for an usbasp.
 
 ## remote control (I2C)
 
 This is enabled by the `-DI2CEN` compile flag, which is set by default in the
-Makefile.
+Makefile. Hardware pull-ups on SCL and SDA are required (1.5 kOhm recommended)
 
-After sending the 7bit address and the r/w bit (set to 0 = write),
+After sending the 7bit address and the r/!w bit,
 the bus master must send the following 7 bytes to the MicroMoody:
 
-* opmode
-* fade/blink delay
+* command
+* delay
 * red value
 * green value
 * blue value
 * payload address (high byte)
 * payload address (low byte)
 
-The default I2C address is 0x11 (the first byte with write flag set is 0x22).
-The default payload address is 0x0001. The idea behind this distinction is
+The default I2C address is `0x11` (17),
+The default payload address is `0x0001`. The idea behind this distinction is
 to use the I2C address to talk to any micromoody, and the payload address to
 select the specific micromoody to address. This way, you can have various
-other I2C devices and more than 127 MicroMoodies on the same bus
-(just in case).
+other I2C devices and up to 65534 MicroMoodies on the same bus
+(just in case you need to).
 
-Commands with the broadcast payload address of 0xffff are always accepted, even
-when they contain the "set address" opmode.
+Commands with the broadcast payload address of `0xffff` are always accepted,
+even when they contain the "set address" opmode.
 
 red, green and blue are the color value, 0 is off, 0xff is full brightness.
 
-### opmode
+There are several types of commands:
 
-Modes marked with `RGB` interpret the red/green/blue bytes, for the others
-they're not important.
+### command 0 .. 63 (set mode of operation)
+
+The red, green and blue bytes are "don't care" unless a command is
+marked `RGB`.
 
 *   0: steady `RGB` light
 *   1: rainbow colors, hard transitions
@@ -44,33 +54,57 @@ they're not important.
 *   5: rainbow colors, fading transitions
 *   6: random colors, fading transitions
 *   7: `RGB` color, fade on/off
-*   8: show temperature (blue ~ cold, red ~ warm)
-       (buggy, only if compiled with -DTEMPERATURE)
 *  63: Run animation. It will start in slot 1 and end in the slot last set
-*  64: Save RGB + delay in animation slot 1
+       (see also below)
+
+modes 8 to 62 are reserved for further blink / fade modes.
+
+### command 64 .. 127 (animation sequences)
+
+*  64: Save `RGB` + delay in animation slot 1
 * ...
-* 127: Save RGB + delay in animation slot 64
-* 240: Save last mode command (opmode &lt; 64) to EEPROM to be recalled after a
-       power cycle. NOTE: if the current opmode is 63 (animation), this may
-       take up to 1 second (~12ms for each used animation slot)
+* 127: Save `RGB` + delay in animation slot 64
+
+For instance, to set a steady red pulse, you can transmit (in hex)
+`40 10 ff 00 00 ff ff`, `41 10 50 00 00 ff ff`. This will make the animation
+run in slot 1 -> slot 2 -> slot 1 -> ....
+
+Note that this does not start the animation yet, use `3f XX XX XX XX ff ff`
+for that. Also note that the upper bound of the current sequence is
+determined by the last animation command. So if you send `40 ...`,
+`41 ...`, `42 ...`, `40 ...`, the animation run will be
+slot 1 -> slot 1 -> slot 1 -> .... (i.e. a steady color).
+
+Refer to example/\*/rgbpulse for a more sophisticated example.
+
+### command 128 .. 239
+
+reserved
+
+### command 240 .. 255 (EEPROM)
+
+These commands access the EEPROM. Writing one byte takes about 3.4ms and is
+implemented synchronously, so expect them to be slow. They may even cause I2C
+bus timeouts (which do not indicate write failures).
+
+* 240: Save current mode of operation (last command &lt; 64) to EEPROM to be
+       recalled after a power cycle. NOTE: if the current opmode is 63
+       (animation), this may take up to 1 second (~12ms for each used animation
+       slot)
 * 241: Set address to color bytes. payload high = red, payload low = green,
        i2c = blue. This will also set the operation mode to random fading.
        Note that for i2c, the least significant 7 bit are the address, while
        the most significant bit is ignored
 
-## temperature sensor
+commands 242 to 255 are reserved for further EEPROM commands.
 
-Enabled by `-DTEMPERATURE`. Disables I2C and fading. Not finished yet.
+## I2C master hardware
 
-Uses the LED to display the current ambient temperature, blue means cold,
-red means warm.
+If you have an Arduino, see `examples/arduino/SerialToI2C` for a USB-Serial
+to I2C interface.
 
-## remote control
-
-`examples/arduino/SerialToI2C` sends serial data onto the I2C bus.
-
-[vusb-i2c](https://github.com/derf/vusb-i2c) can be used to control an I2C
-bus with an almost-standard VUSB circuit.
+Otherwise, see [vusb-i2c](https://github.com/derf/vusb-i2c) for a
+general-purpose USB-I2C tool based on VUSB.
 
 ## recognizing the firmware state
 
@@ -89,5 +123,3 @@ the MicroMoody's I2C address (see above for default).
 
 If it is operating with hard transitions, so will the slaves. same for soft
 (fading) transitions.
-
-This will not work without hardware pullups on SDA and SCL.
