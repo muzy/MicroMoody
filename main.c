@@ -20,7 +20,7 @@
 
 #define VR ( OCR1B   )
 #define VG ( OCR1A   )
-#define VB ( is_b )
+#define VB ( is_blue )
 
 #define OM_MODE_STEADY        (  0)
 #define OM_MODE_BLINKRGB      (  1)
@@ -62,7 +62,7 @@ volatile rgbint16_t c_dest = {0, 0, 0};
 volatile rgbint16_t c_step = {0, 0, 0};
 volatile rgbint16_t c_cur = {0, 0, 0};
 
-volatile uint8_t is_b = 0;
+volatile uint8_t is_blue = 0;
 volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed;
 
 volatile uint8_t seq[257];
