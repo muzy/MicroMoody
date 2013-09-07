@@ -13,14 +13,14 @@
 #include <avr/interrupt.h>
 
 /*
- * PB1: green (OC1A)
- * PB3: blue  (soft pwm)
- * PB4: red   (OC1B)
+ * PB1: g (OC1A)
+ * PB3: b  (soft pwm)
+ * PB4: r   (OC1B)
  */
 
-#define VRED   ( OCR1B   )
-#define VGREEN ( OCR1A   )
-#define VBLUE  ( is_blue )
+#define VR ( OCR1B   )
+#define VG ( OCR1A   )
+#define VB ( is_b )
 
 #define OM_MODE_STEADY        (  0)
 #define OM_MODE_BLINKRGB      (  1)
@@ -46,12 +46,24 @@
 #undef I2CEN
 #endif
 
-volatile uint8_t want_blue,  cache_blue;
-volatile uint8_t want_green, cache_green;
-volatile uint8_t want_red,   cache_red;
+typedef struct {
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+} rgbint8_t;
 
-volatile uint8_t is_blue = 0;
-volatile uint8_t opmode, speed;
+typedef struct {
+	int16_t r;
+	int16_t g;
+	int16_t b;
+} rgbint16_t;
+
+volatile rgbint16_t c_dest = {0, 0, 0};
+volatile rgbint16_t c_step = {0, 0, 0};
+volatile rgbint16_t c_cur = {0, 0, 0};
+
+volatile uint8_t is_b = 0;
+volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed;
 
 volatile uint8_t seq[257];
 volatile uint8_t step = 0;
@@ -64,7 +76,7 @@ volatile uint8_t addr_i2c = 0x11;
 volatile enum {
 	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;
 
-uint8_t ee_valid, ee_mode, ee_speed, ee_red, ee_green, ee_blue EEMEM;
+uint8_t ee_valid EEMEM;
 uint8_t ee_seq[257] EEMEM;
 uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
 
@@ -72,6 +84,20 @@ const uint8_t pwmtable[32] PROGMEM = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
 	27, 32, 38, 45, 54, 64, 76, 91, 108, 128, 152, 181, 215, 255
 };
+
+void calc_fadesteps()
+{
+	c_step.r = (c_dest.r - c_cur.r) / 260;
+	c_step.g = (c_dest.g - c_cur.g) / 260;
+	c_step.b = (c_dest.b - c_cur.b) / 260;
+}
+
+void set_colour()
+{
+	VR = c_cur.r / 64;
+	VG = c_cur.g / 64;
+	VB = c_cur.b / 64;
+}
 
 int main (void)
 {
@@ -94,31 +120,29 @@ int main (void)
 	OCR1C = 0xff;
 
 	if (eeprom_read_byte(&ee_valid) == 1) {
-		VRED   = want_red   = cache_red   = eeprom_read_byte(&ee_red);
-		VGREEN = want_green = cache_green = eeprom_read_byte(&ee_green);
-		VBLUE  = want_blue  = cache_blue  = eeprom_read_byte(&ee_blue);
-
-		opmode   = eeprom_read_byte(&ee_mode);
-		speed    = eeprom_read_byte(&ee_speed);
 		addr_hi  = eeprom_read_byte(&ee_addrhi);
 		addr_lo  = eeprom_read_byte(&ee_addrlo);
 		addr_i2c = eeprom_read_byte(&ee_addri2c);
 
-		if (opmode == OM_MODE_STARTANIM) {
-			VRED = VGREEN = VBLUE = speed = 0;
-			seq[256] = eeprom_read_byte(&ee_seq[256]);
-			for (cnt = 0; cnt < 255; cnt++)
-				seq[cnt] = eeprom_read_byte(&ee_seq[cnt]);
-			seq[255] = eeprom_read_byte(&ee_seq[255]);
-		}
+		for (cnt = 0; cnt < 255; cnt++)
+			seq[cnt] = eeprom_read_byte(&ee_seq[cnt]);
+		seq[255] = eeprom_read_byte(&ee_seq[255]);
+		seq[256] = eeprom_read_byte(&ee_seq[256]);
 	} else {
-		opmode = OM_MODE_BLINKRGB;
+		seq[0] = 16;
+		seq[1] = seq[2] = seq[3] = 0;
+		seq[4] = 16;
+		seq[5] = 255;
+		seq[6] = 255;
+		seq[7] = 255;
+		seq[8] = 24;
+		seq[9] = seq[10] = seq[11] = 0;
+		seq[256] = 66;
+		opmode = OM_MODE_ANIM_LOW;
 		speed  = 32;
-		VRED   = want_red   = cache_red   = 255;
-		VGREEN = want_green = cache_green = 255;
-		VBLUE  = want_blue  = cache_blue  = 0;
 	}
 
+	set_colour();
 
 #ifdef I2CEN
 	USICR = _BV(USIWM1) | _BV(USICS1);
@@ -144,10 +168,10 @@ int main (void)
 
 	while (1) {
 		cnt++;
-		if (cnt == 0 && VBLUE) {
+		if (cnt == 0 && VB) {
 			PORTB &= ~_BV(PB3);
 		}
-		if (cnt == VBLUE)
+		if (cnt == VB)
 			PORTB |= _BV(PB3);
 	}
 
@@ -207,7 +231,6 @@ void twi_tx_byte(uint8_t byte)
 	twi_delay(TWI_DELAY_LONG);
 }
 
-
 #endif /* I2CMASTER */
 
 ISR(TIMER0_OVF_vect)
@@ -232,25 +255,16 @@ ISR(TIMER0_OVF_vect)
 	if ((step % 64) == 0)
 		animstep++;
 
-	if (( ((step % ( ( speed ) * 1)) == 0) )
-			&& (opmode >= 4) ) {
+	if ((step % speed) == 0) {
 
-		if (VRED > want_red)
-			VRED--;
-		if (VRED < want_red)
-			VRED++;
-		if (VGREEN > want_green)
-			VGREEN--;
-		if (VGREEN < want_green)
-			VGREEN++;
-		if (VBLUE > want_blue)
-			VBLUE--;
-		if (VBLUE < want_blue)
-			VBLUE++;
+		c_cur.r += c_step.r;
+		c_cur.g += c_step.g;
+		c_cur.b += c_step.b;
 	}
 
 #ifdef I2CMASTER
 	if ((animstep == ( ( (uint16_t)speed) << 0) ) && (i2cstep <= 3)) {
+
 		switch (i2cstep) {
 			case 0:
 				sda_low();
@@ -263,16 +277,16 @@ ISR(TIMER0_OVF_vect)
 				if (opmode >= 4) {
 					twi_tx_byte(OM_MODE_FADETOSTEADY);
 					twi_tx_byte(speed);
-					twi_tx_byte(want_red);
-					twi_tx_byte(want_green);
-					twi_tx_byte(want_blue);
+					twi_tx_byte(c_dest.r);
+					twi_tx_byte(c_dest.g);
+					twi_tx_byte(c_dest.b);
 				}
 				else {
 					twi_tx_byte(OM_MODE_STEADY);
 					twi_tx_byte(speed);
-					twi_tx_byte(VRED);
-					twi_tx_byte(VGREEN);
-					twi_tx_byte(VBLUE);
+					twi_tx_byte(VR);
+					twi_tx_byte(VG);
+					twi_tx_byte(VB);
 				}
 				break;
 			case 3:
@@ -289,114 +303,28 @@ ISR(TIMER0_OVF_vect)
 
 	if (animstep == ( ( (uint16_t)speed ) << 2 ) ) {
 		animstep = 0;
+		c_cur.r = c_dest.r;
+		c_cur.g = c_dest.g;
+		c_cur.b = c_dest.b;
 #ifdef I2CMASTER
 		i2cstep = 0;
 #endif
-		switch (opmode) {
-			case OM_MODE_BLINKRGB:
-				if (!VBLUE && VRED && !VGREEN)
-					VGREEN = 255;
-				else if (VRED && VGREEN)
-					VRED = 0;
-				else if (VGREEN && !VBLUE)
-					VBLUE = 255;
-				else if (VGREEN && VBLUE)
-					VGREEN = 0;
-				else if (VBLUE && !VRED)
-					VRED = 255;
-				else if (VBLUE && VRED)
-					VBLUE = 0;
-				else
-					VRED = 255;
-				break;
-			case OM_MODE_BLINKRAND:
-				VRED   = pwmtable[ rand() & 32 ];
-				VGREEN = pwmtable[ rand() & 32 ];
-				VBLUE  = pwmtable[ rand() & 32 ];
-				break;
-			case OM_MODE_BLINKONOFF:
-				if ((VRED == cache_red) && (VGREEN == cache_green)
-						&& (VBLUE == cache_blue)) {
-					VRED = VGREEN = VBLUE = 0;
-				}
-				else {
-					VRED   = cache_red;
-					VGREEN = cache_green;
-					VBLUE  = cache_blue;
-				}
-				break;
-			case OM_MODE_FADEONOFF:
-				if ((want_red == cache_red) && (want_green == cache_green)
-						&& (want_blue == cache_blue)) {
-					want_red = want_green = want_blue = 0;
-				}
-				else {
-					want_red   = cache_red;
-					want_green = cache_green;
-					want_blue  = cache_blue;
-				}
-				break;
-			case OM_MODE_FADERGB:
-				if (!want_blue && want_red && !want_green)
-					want_green = 255;
-				else if (want_red && want_green)
-					want_red = 0;
-				else if (want_green && !want_blue)
-					want_blue = 255;
-				else if (want_green && want_blue)
-					want_green = 0;
-				else if (want_blue && !want_red)
-					want_red = 255;
-				else if (want_blue && want_red)
-					want_blue = 0;
-				else
-					want_red = 255;
-				break;
-			case OM_MODE_FADERAND:
-				want_red   = pwmtable[ rand() & 32 ];
-				want_green = pwmtable[ rand() & 32 ];
-				want_blue  = pwmtable[ rand() & 32 ];
-				break;
-			case OM_MODE_FADETOSTEADY:
-				break;
-#ifdef TEMPERATURE
-			case OM_MODE_TEMPERATURE:
-				VGREEN = 0;
+		if ((opmode >= OM_MODE_ANIM_LOW) && (opmode < OM_MODE_ANIM_HIGH)) {
+			seq_addr = (opmode - OM_MODE_ANIM_LOW) * 4;
+			speed    = seq[ seq_addr + 0 ];
+			c_dest.r = seq[ seq_addr + 1 ] * 64;
+			c_dest.g = seq[ seq_addr + 2 ] * 64;
+			c_dest.b = seq[ seq_addr + 3 ] * 64;
 
-				if (thermal < 0)
-					VBLUE = 0xff;
-				else if (thermal < 32)
-					VBLUE = pwmtable[31 - thermal];
-				else
-					VBLUE = 0;
+			calc_fadesteps();
 
-				if (thermal < 20)
-					VRED = 0;
-				else if (thermal < 52)
-					VRED = pwmtable[thermal - 20];
-				else
-					VRED = 0xff;
-				break;
-#endif /* TEMPERATURE */
-			case OM_MODE_STARTANIM:
+			if (opmode >= seq[256])
 				opmode = OM_MODE_ANIM_LOW;
-				// fall-through
-			default:
-				if ((opmode >= OM_MODE_ANIM_LOW) && (opmode < OM_MODE_ANIM_HIGH)) {
-					seq_addr = (opmode - OM_MODE_ANIM_LOW) * 4;
-					speed      = seq[ seq_addr + 0 ];
-					want_red   = seq[ seq_addr + 1 ];
-					want_green = seq[ seq_addr + 2 ];
-					want_blue  = seq[ seq_addr + 3 ];
-
-					if (opmode >= seq[256])
-						opmode = OM_MODE_ANIM_LOW;
-					else
-						opmode++;
-				}
-				break;
+			else
+				opmode++;
 		}
 	}
+	set_colour();
 
 	asm("wdr");
 }
@@ -457,33 +385,16 @@ ISR(USI_OVF_vect)
 				 || ((rcvbuf[1] == 0xff) && (rcvbuf[0] == 0xff)))) {
 			step = animstep = 0;
 
-			if (rcvbuf[6] < 4) {
-				VRED   = cache_red   = rcvbuf[4];
-				VGREEN = cache_green = rcvbuf[3];
-				VBLUE  = cache_blue  = rcvbuf[2];
-			}
-			else if (rcvbuf[6] < 8) {
-				want_red   = cache_red   = rcvbuf[4];
-				want_green = cache_green = rcvbuf[3];
-				want_blue  = cache_blue  = rcvbuf[2];
-			}
-			else if (rcvbuf[6] == OM_MODE_SETADDR) {
+			if (rcvbuf[6] == OM_MODE_SETADDR) {
 				addr_hi  = rcvbuf[4];
 				addr_lo  = rcvbuf[3];
 				addr_i2c = rcvbuf[2];
-
-				opmode = OM_MODE_FADERGB;
-				speed = 64;
-				want_red = cache_red = 0;
-				want_green = cache_green = 255;
-				want_blue = cache_blue = 0;
 			}
 
-			if (rcvbuf[6] <= OM_MODE_STARTANIM) {
-				opmode = rcvbuf[6];
-				speed = rcvbuf[5];
+			if (rcvbuf[6] == OM_MODE_STARTANIM) {
+				opmode = OM_MODE_ANIM_LOW;
 			}
-			else if (rcvbuf[6] < OM_MODE_ANIM_HIGH) {
+			else if ((rcvbuf[6] >= OM_MODE_ANIM_LOW) && (rcvbuf[6] < OM_MODE_ANIM_HIGH)) {
 				seq_addr = (rcvbuf[6] - OM_MODE_ANIM_LOW) * 4;
 				seq[ seq_addr + 0 ] = rcvbuf[5];
 				seq[ seq_addr + 1 ] = rcvbuf[4];
@@ -492,30 +403,19 @@ ISR(USI_OVF_vect)
 				seq[256] = rcvbuf[6];
 			}
 			else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
-				if (opmode > OM_MODE_STARTANIM)
-					opmode = OM_MODE_STARTANIM;
 				eeprom_write_byte(&ee_valid, 1);
 				eeprom_write_byte(&ee_addrhi, addr_hi);
 				eeprom_write_byte(&ee_addrlo, addr_lo);
 				eeprom_write_byte(&ee_addri2c, addr_i2c);
-				eeprom_write_byte(&ee_mode, opmode);
-				if (opmode < OM_MODE_STARTANIM) {
-					eeprom_write_byte(&ee_speed, speed);
-					eeprom_write_byte(&ee_red, cache_red);
-					eeprom_write_byte(&ee_green, cache_green);
-					eeprom_write_byte(&ee_blue, cache_blue);
+				eeprom_write_byte(&ee_seq[256], seq[256]);
+				if (seq[256] == OM_MODE_ANIM_HIGH) {
+					for (seq_addr = 0; seq_addr < 255; seq_addr++)
+					eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
+					eeprom_write_byte(&ee_seq[255], seq[255]);
 				}
 				else {
-					eeprom_write_byte(&ee_seq[256], seq[256]);
-					if (seq[256] == OM_MODE_ANIM_HIGH) {
-						for (seq_addr = 0; seq_addr < 255; seq_addr++)
+					for (seq_addr = 0; seq_addr <= ((seq[256] - OM_MODE_ANIM_LOW) * 4 + 3); seq_addr++) {
 						eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
-						eeprom_write_byte(&ee_seq[255], seq[255]);
-					}
-					else {
-						for (seq_addr = 0; seq_addr <= ((seq[256] - OM_MODE_ANIM_LOW) * 4 + 3); seq_addr++) {
-							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
-						}
 					}
 				}
 			}
