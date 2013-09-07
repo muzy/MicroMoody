@@ -17,7 +17,7 @@ CFLAGS += -fwhole-program -flto -mstrict-X
 
 AVRFLAGS += -U lfuse:w:0xe2:m -U hfuse:w:0xdf:m -U efuse:w:0xfe:m
 AVRFLAGS += -U flash:w:main.hex
-#AVRFLAGS += -U eeprom:w:main.eep
+AVRFLAGS += -U eeprom:w:main.eep
 
 %.hex: %.elf
 	${AVROBJCOPY} -O ihex -R .eeprom $< $@

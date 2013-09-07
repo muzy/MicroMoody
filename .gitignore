@@ -16,7 +16,6 @@
 *.out
 *.app
 .dep/
-*.eep
 *.elf
 *.hex
 *.lss
