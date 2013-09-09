@@ -63,7 +63,7 @@ volatile rgbint16_t c_step = {0, 0, 0};
 volatile rgbint16_t c_cur = {0, 0, 0};
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed = 1;
+volatile uint8_t opmode = OM_MODE_ANIM_LOW, delay = 1;
 
 volatile uint8_t seq[SEQ_MAX + 1];
 volatile uint8_t step = 0;
@@ -87,7 +87,7 @@ static const __flash uint8_t pwmtable[32] = {
 
 void calc_fadesteps()
 {
-	if (speed == 0) {
+	if (delay == 0) {
 		c_cur.r = c_dest.r;
 		c_cur.g = c_dest.g;
 		c_cur.b = c_dest.b;
@@ -258,7 +258,7 @@ ISR(TIMER0_OVF_vect)
 	if ((step % 64) == 0)
 		animstep++;
 
-	if ((step % speed) == 0) {
+	if ((step % delay) == 0) {
 
 		c_cur.r += c_step.r;
 		c_cur.g += c_step.g;
@@ -266,7 +266,7 @@ ISR(TIMER0_OVF_vect)
 	}
 
 #ifdef I2CMASTER
-	if ((animstep == ( ( (uint16_t)speed) << 0) ) && (i2cstep <= 3)) {
+	if ((animstep == ( ( (uint16_t)delay) << 0) ) && (i2cstep <= 3)) {
 
 		switch (i2cstep) {
 			case 0:
@@ -279,14 +279,14 @@ ISR(TIMER0_OVF_vect)
 				twi_tx_byte(addr_i2c << 1);
 				if (opmode >= 4) {
 					twi_tx_byte(OM_MODE_FADETOSTEADY);
-					twi_tx_byte(speed);
+					twi_tx_byte(delay);
 					twi_tx_byte(c_dest.r);
 					twi_tx_byte(c_dest.g);
 					twi_tx_byte(c_dest.b);
 				}
 				else {
 					twi_tx_byte(OM_MODE_STEADY);
-					twi_tx_byte(speed);
+					twi_tx_byte(delay);
 					twi_tx_byte(VR);
 					twi_tx_byte(VG);
 					twi_tx_byte(VB);
@@ -304,7 +304,7 @@ ISR(TIMER0_OVF_vect)
 	}
 #endif
 
-	if (animstep == ( ( (uint16_t)speed ) << 2 ) ) {
+	if (animstep == ( ( (uint16_t)delay ) << 2 ) ) {
 		animstep = 0;
 		c_cur.r = c_dest.r;
 		c_cur.g = c_dest.g;
@@ -314,7 +314,7 @@ ISR(TIMER0_OVF_vect)
 #endif
 		if (opmode <= OM_MODE_ANIM_HIGH) {
 			seq_addr = (uint16_t)opmode * 4;
-			speed    = seq[ seq_addr + 0 ];
+			delay    = seq[ seq_addr + 0 ];
 			c_dest.r = seq[ seq_addr + 1 ] * 64;
 			c_dest.g = seq[ seq_addr + 2 ] * 64;
 			c_dest.b = seq[ seq_addr + 3 ] * 64;
