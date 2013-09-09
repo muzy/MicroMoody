@@ -87,6 +87,11 @@ static const __flash uint8_t pwmtable[32] = {
 
 void calc_fadesteps()
 {
+	if (speed == 0) {
+		c_cur.r = c_dest.r;
+		c_cur.g = c_dest.g;
+		c_cur.b = c_dest.b;
+	}
 	c_step.r = (c_dest.r - c_cur.r) / 260;
 	c_step.g = (c_dest.g - c_cur.g) / 260;
 	c_step.b = (c_dest.b - c_cur.b) / 260;
@@ -414,81 +419,30 @@ ISR(USI_OVF_vect)
 				seq[SEQ_MAX] = OM_MODE_ANIM_LOW + 32;
 			}
 
-			switch (rcvbuf[6]) {
-			case OM_MODE_STEADY:
-				seq[0] = 0;
-				c_cur.r = c_dest.r = (seq[1] = rcvbuf[4]) << 8;
-				c_cur.g = c_dest.g = (seq[2] = rcvbuf[3]) << 8;
-				c_cur.b = c_dest.b = (seq[3] = rcvbuf[2]) << 8;
-				opmode = seq[SEQ_MAX] = OM_MODE_ANIM_LOW;
-				calc_fadesteps();
-				set_colour();
-				break;
-//			case OM_MODE_BLINKRGB:
-//				seq[0] = rcvbuf[4];
-//				seq[1] = 255;
-//				seq[2] = 0;
-//				seq[3] = 0;
-//				seq[4] = 0;
-//				seq[5] = 255;
-//				seq[6] = 255;
-//				seq[7] = 0;
-//				seq[8] = 
-//
-//				seq[4] = rcvbuf[4];
-//				seq[5] = 255;
-//				seq[6] = 255;
-//
-//					rcvbuf[4], 255,   0,   0,
-//					        0, 255, 255,   0,
-//					rcvbuf[4], 255, 255,   0,
-//					        0,   0, 255,   0,
-//					rcvbuf[4],   0, 255,   0,
-//					        0,   0, 255, 255,
-//					rcvbuf[4],   0, 255, 255,
-//					        0,   0,   0, 255,
-//					rcvbuf[4],   0,   0, 255,
-//					        0, 255,   0, 255,
-//					rcvbuf[4], 255,   0, 255,
-//				break;
-			case OM_MODE_BLINKRAND:
-				break;
-			case OM_MODE_BLINKONOFF:
-				break;
-			case OM_MODE_FADETOSTEADY:
-				break;
-			case OM_MODE_FADERGB:
-				break;
-			case OM_MODE_FADERAND:
-				break;
-			case OM_MODE_FADEONOFF:
-				break;
-			default:
-				if (rcvbuf[6] == OM_MODE_STARTANIM) {
-					opmode = OM_MODE_ANIM_LOW;
+			if (rcvbuf[6] == OM_MODE_STARTANIM) {
+				opmode = OM_MODE_ANIM_LOW;
+			}
+			else if (rcvbuf[6] <= OM_MODE_ANIM_HIGH) {
+				seq_addr = rcvbuf[6] * 4;
+				seq[ seq_addr + 0 ] = rcvbuf[5];
+				seq[ seq_addr + 1 ] = rcvbuf[4];
+				seq[ seq_addr + 2 ] = rcvbuf[3];
+				seq[ seq_addr + 3 ] = rcvbuf[2];
+				seq[SEQ_MAX] = rcvbuf[6];
+			}
+			else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
+				eeprom_write_byte(&ee_valid, 1);
+				eeprom_write_byte(&ee_addrhi, addr_hi);
+				eeprom_write_byte(&ee_addrlo, addr_lo);
+				eeprom_write_byte(&ee_addri2c, addr_i2c);
+				eeprom_write_byte(&ee_seq[SEQ_MAX], seq[SEQ_MAX]);
+				if (seq[SEQ_MAX] == OM_MODE_ANIM_HIGH) {
+					for (seq_addr = 0; seq_addr < SEQ_MAX; seq_addr++)
+						eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
 				}
-				else if (rcvbuf[6] <= OM_MODE_ANIM_HIGH) {
-					seq_addr = rcvbuf[6] * 4;
-					seq[ seq_addr + 0 ] = rcvbuf[5];
-					seq[ seq_addr + 1 ] = rcvbuf[4];
-					seq[ seq_addr + 2 ] = rcvbuf[3];
-					seq[ seq_addr + 3 ] = rcvbuf[2];
-					seq[SEQ_MAX] = rcvbuf[6];
-				}
-				else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
-					eeprom_write_byte(&ee_valid, 1);
-					eeprom_write_byte(&ee_addrhi, addr_hi);
-					eeprom_write_byte(&ee_addrlo, addr_lo);
-					eeprom_write_byte(&ee_addri2c, addr_i2c);
-					eeprom_write_byte(&ee_seq[SEQ_MAX], seq[SEQ_MAX]);
-					if (seq[SEQ_MAX] == OM_MODE_ANIM_HIGH) {
-						for (seq_addr = 0; seq_addr < SEQ_MAX; seq_addr++)
-							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
-					}
-					else {
-						for (seq_addr = 0; seq_addr <= (seq[SEQ_MAX] * 4 + 3); seq_addr++) {
-							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
-						}
+				else {
+					for (seq_addr = 0; seq_addr <= (seq[SEQ_MAX] * 4 + 3); seq_addr++) {
+						eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
 					}
 				}
 			}
