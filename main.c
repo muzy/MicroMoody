@@ -33,9 +33,11 @@
 #define OM_MODE_TEMPERATURE   (  8)
 #define OM_MODE_STARTANIM     ( 63)
 #define OM_MODE_ANIM_LOW      ( 64)
-#define OM_MODE_ANIM_HIGH     (127)
+#define OM_MODE_ANIM_HIGH     (159)
 #define OM_MODE_SAVESTATE     (240)
 #define OM_MODE_SETADDR       (241)
+
+#define SEQ_MAX (384)
 
 #define TEMPERATURE_ZERO (355)
 
@@ -65,7 +67,7 @@ volatile rgbint16_t c_cur = {0, 0, 0};
 volatile uint8_t is_blue = 0;
 volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed;
 
-volatile uint8_t seq[257];
+volatile uint8_t seq[SEQ_MAX + 1];
 volatile uint8_t step = 0;
 volatile uint16_t animstep = 0;
 
@@ -77,7 +79,7 @@ volatile enum {
 	S_NONE, S_ACK, S_BYTE } comm_status = S_NONE;
 
 uint8_t ee_valid EEMEM;
-uint8_t ee_seq[257] EEMEM;
+uint8_t ee_seq[SEQ_MAX + 1] EEMEM;
 uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
 
 const uint8_t pwmtable[32] PROGMEM = {
@@ -106,6 +108,7 @@ int main (void)
 	PORTB = _BV(PB1) | _BV(PB3) | _BV(PB4);
 
 	uint8_t cnt = 0;
+	uint16_t seq_cnt = 0;
 
 	WDTCR = _BV(WDE) | _BV(WDP3);
 
@@ -124,22 +127,8 @@ int main (void)
 		addr_lo  = eeprom_read_byte(&ee_addrlo);
 		addr_i2c = eeprom_read_byte(&ee_addri2c);
 
-		for (cnt = 0; cnt < 255; cnt++)
-			seq[cnt] = eeprom_read_byte(&ee_seq[cnt]);
-		seq[255] = eeprom_read_byte(&ee_seq[255]);
-		seq[256] = eeprom_read_byte(&ee_seq[256]);
-	} else {
-		seq[0] = 16;
-		seq[1] = seq[2] = seq[3] = 0;
-		seq[4] = 16;
-		seq[5] = 255;
-		seq[6] = 255;
-		seq[7] = 255;
-		seq[8] = 24;
-		seq[9] = seq[10] = seq[11] = 0;
-		seq[256] = 66;
-		opmode = OM_MODE_ANIM_LOW;
-		speed  = 32;
+		for (seq_cnt = 0; seq_cnt <= SEQ_MAX; seq_cnt++)
+			seq[seq_cnt] = eeprom_read_byte(&ee_seq[seq_cnt]);
 	}
 
 	set_colour();
@@ -235,7 +224,7 @@ void twi_tx_byte(uint8_t byte)
 
 ISR(TIMER0_OVF_vect)
 {
-	uint8_t seq_addr;
+	uint16_t seq_addr;
 
 #ifdef I2CMASTER
 	static uint8_t i2cstep = 0;
@@ -318,7 +307,7 @@ ISR(TIMER0_OVF_vect)
 
 			calc_fadesteps();
 
-			if (opmode >= seq[256])
+			if (opmode >= seq[SEQ_MAX])
 				opmode = OM_MODE_ANIM_LOW;
 			else
 				opmode++;
@@ -346,7 +335,7 @@ ISR(USI_OVF_vect)
 {
 	static uint8_t rcvbuf[7];
 	static uint8_t rcvcnt = sizeof(rcvbuf);
-	uint8_t seq_addr;
+	int16_t seq_addr;
 
 	switch (comm_status) {
 		case S_NONE:
@@ -389,33 +378,108 @@ ISR(USI_OVF_vect)
 				addr_hi  = rcvbuf[4];
 				addr_lo  = rcvbuf[3];
 				addr_i2c = rcvbuf[2];
+				for (seq_addr = 0; seq_addr < 64; seq_addr += 8) {
+					seq[ seq_addr + 0 ] = 4;
+					seq[ seq_addr + 1 ] = (addr_hi & _BV(7 - (seq_addr / 8))) * 255;
+					seq[ seq_addr + 2 ] = 255;
+					seq[ seq_addr + 3 ] = ~seq[ seq_addr + 1 ];
+					seq[ seq_addr + 4 ] = 8;
+					seq[ seq_addr + 5 ] = 0;
+					seq[ seq_addr + 6 ] = 0;
+					seq[ seq_addr + 7 ] = 0;
+				}
+				for (seq_addr = 64; seq_addr < 128; seq_addr += 8) {
+					seq[ seq_addr + 0 ] = 4;
+					seq[ seq_addr + 1 ] = (addr_lo & _BV(15 - (seq_addr / 8))) * 255;
+					seq[ seq_addr + 2 ] = 255;
+					seq[ seq_addr + 3 ] = ~seq[seq_addr + 1 ];
+					seq[ seq_addr + 4 ] = 8;
+					seq[ seq_addr + 5 ] = 0;
+					seq[ seq_addr + 6 ] = 0;
+					seq[ seq_addr + 7 ] = 0;
+				}
+				seq[128] = 32;
+				seq[129] = 0;
+				seq[130] = 0;
+				seq[131] = 0;
+				seq[SEQ_MAX] = OM_MODE_ANIM_LOW + 32;
 			}
 
-			if (rcvbuf[6] == OM_MODE_STARTANIM) {
-				opmode = OM_MODE_ANIM_LOW;
-			}
-			else if ((rcvbuf[6] >= OM_MODE_ANIM_LOW) && (rcvbuf[6] < OM_MODE_ANIM_HIGH)) {
-				seq_addr = (rcvbuf[6] - OM_MODE_ANIM_LOW) * 4;
-				seq[ seq_addr + 0 ] = rcvbuf[5];
-				seq[ seq_addr + 1 ] = rcvbuf[4];
-				seq[ seq_addr + 2 ] = rcvbuf[3];
-				seq[ seq_addr + 3 ] = rcvbuf[2];
-				seq[256] = rcvbuf[6];
-			}
-			else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
-				eeprom_write_byte(&ee_valid, 1);
-				eeprom_write_byte(&ee_addrhi, addr_hi);
-				eeprom_write_byte(&ee_addrlo, addr_lo);
-				eeprom_write_byte(&ee_addri2c, addr_i2c);
-				eeprom_write_byte(&ee_seq[256], seq[256]);
-				if (seq[256] == OM_MODE_ANIM_HIGH) {
-					for (seq_addr = 0; seq_addr < 255; seq_addr++)
-					eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
-					eeprom_write_byte(&ee_seq[255], seq[255]);
+			switch (rcvbuf[6]) {
+			case OM_MODE_STEADY:
+				seq[0] = 0;
+				c_cur.r = c_dest.r = (seq[1] = rcvbuf[4]) << 8;
+				c_cur.g = c_dest.g = (seq[2] = rcvbuf[3]) << 8;
+				c_cur.b = c_dest.b = (seq[3] = rcvbuf[2]) << 8;
+				opmode = seq[SEQ_MAX] = OM_MODE_ANIM_LOW;
+				calc_fadesteps();
+				set_colour();
+				break;
+//			case OM_MODE_BLINKRGB:
+//				seq[0] = rcvbuf[4];
+//				seq[1] = 255;
+//				seq[2] = 0;
+//				seq[3] = 0;
+//				seq[4] = 0;
+//				seq[5] = 255;
+//				seq[6] = 255;
+//				seq[7] = 0;
+//				seq[8] = 
+//
+//				seq[4] = rcvbuf[4];
+//				seq[5] = 255;
+//				seq[6] = 255;
+//
+//					rcvbuf[4], 255,   0,   0,
+//					        0, 255, 255,   0,
+//					rcvbuf[4], 255, 255,   0,
+//					        0,   0, 255,   0,
+//					rcvbuf[4],   0, 255,   0,
+//					        0,   0, 255, 255,
+//					rcvbuf[4],   0, 255, 255,
+//					        0,   0,   0, 255,
+//					rcvbuf[4],   0,   0, 255,
+//					        0, 255,   0, 255,
+//					rcvbuf[4], 255,   0, 255,
+//				break;
+			case OM_MODE_BLINKRAND:
+				break;
+			case OM_MODE_BLINKONOFF:
+				break;
+			case OM_MODE_FADETOSTEADY:
+				break;
+			case OM_MODE_FADERGB:
+				break;
+			case OM_MODE_FADERAND:
+				break;
+			case OM_MODE_FADEONOFF:
+				break;
+			default:
+				if (rcvbuf[6] == OM_MODE_STARTANIM) {
+					opmode = OM_MODE_ANIM_LOW;
 				}
-				else {
-					for (seq_addr = 0; seq_addr <= ((seq[256] - OM_MODE_ANIM_LOW) * 4 + 3); seq_addr++) {
-						eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
+				else if ((rcvbuf[6] >= OM_MODE_ANIM_LOW) && (rcvbuf[6] < OM_MODE_ANIM_HIGH)) {
+					seq_addr = (rcvbuf[6] - OM_MODE_ANIM_LOW) * 4;
+					seq[ seq_addr + 0 ] = rcvbuf[5];
+					seq[ seq_addr + 1 ] = rcvbuf[4];
+					seq[ seq_addr + 2 ] = rcvbuf[3];
+					seq[ seq_addr + 3 ] = rcvbuf[2];
+					seq[SEQ_MAX] = rcvbuf[6];
+				}
+				else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
+					eeprom_write_byte(&ee_valid, 1);
+					eeprom_write_byte(&ee_addrhi, addr_hi);
+					eeprom_write_byte(&ee_addrlo, addr_lo);
+					eeprom_write_byte(&ee_addri2c, addr_i2c);
+					eeprom_write_byte(&ee_seq[SEQ_MAX], seq[SEQ_MAX]);
+					if (seq[SEQ_MAX] == OM_MODE_ANIM_HIGH) {
+						for (seq_addr = 0; seq_addr < SEQ_MAX; seq_addr++)
+							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
+					}
+					else {
+						for (seq_addr = 0; seq_addr <= ((seq[SEQ_MAX] - OM_MODE_ANIM_LOW) * 4 + 3); seq_addr++) {
+							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
+						}
 					}
 				}
 			}
