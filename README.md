@@ -41,45 +41,33 @@ red, green and blue are the color value, 0 is off, 0xff is full brightness.
 
 There are several types of commands:
 
-### command 0 .. 63 (set mode of operation)
+### command 0 .. 127 (animation sequences)
 
-The red, green and blue bytes are "don't care" unless a command is
-marked `RGB`.
-
-*   0: steady `RGB` light
-*   1: rainbow colors, hard transitions
-*   2: random colors, hard transitions
-*   3: `RGB` color, blink on/off
-*   4: steady light, fade to specified `RGB` color
-*   5: rainbow colors, fading transitions
-*   6: random colors, fading transitions
-*   7: `RGB` color, fade on/off
-*  63: Run animation. It will start in slot 1 and end in the slot last set
-       (see also below)
-
-modes 8 to 62 are reserved for further blink / fade modes.
-
-### command 64 .. 127 (animation sequences)
-
-*  64: Save `RGB` + delay in animation slot 1
+*  0: Save `RGB` + delay in animation slot 1
 * ...
-* 127: Save `RGB` + delay in animation slot 64
+* 111: Save `RGB` + delay in animation slot 112
+* 112: run animation. It will start in slot 1 and end in the slot last set.
+* 113: reserved
+* ...
+* 119: reserved
 
 For instance, to set a steady red pulse, you can transmit (in hex)
-`40 10 ff 00 00 ff ff`, `41 10 50 00 00 ff ff`. This will make the animation
+`00 10 ff 00 00 ff ff`, `01 10 50 00 00 ff ff`. This will make the animation
 run in slot 1 -> slot 2 -> slot 1 -> ....
 
-Note that this does not start the animation yet, use `3f XX XX XX XX ff ff`
+Note that this does not start the animation yet, use `70 XX XX XX XX ff ff`
 for that. Also note that the upper bound of the current sequence is
-determined by the last animation command. So if you send `40 ...`,
-`41 ...`, `42 ...`, `40 ...`, the animation run will be
+determined by the last animation command. So if you send `00 ...`,
+`01 ...`, `02 ...`, `00 ...`, the animation run will be
 slot 1 -> slot 1 -> slot 1 -> .... (i.e. a steady color).
 
 Refer to example/\*/rgbpulse for a more sophisticated example.
 
+
 ### command 128 .. 239
 
 reserved
+
 
 ### command 240 .. 255 (EEPROM)
 
@@ -94,7 +82,10 @@ bus timeouts (which do not indicate write failures).
 * 241: Set address to color bytes. payload high = red, payload low = green,
        i2c = blue. This will also set the operation mode to random fading.
        Note that for i2c, the least significant 7 bit are the address, while
-       the most significant bit is ignored
+       the most significant bit is ignored.
+       After setting the payload address, the moody will display it on the RGB
+       LED.  The flash cycle is MSB ... LSB with a pause at the end, the i2c
+       address is not displayed. cyan == 0, yellow == 1.
 
 commands 242 to 255 are reserved for further EEPROM commands.
 
@@ -106,14 +97,18 @@ to I2C interface.
 Otherwise, see [vusb-i2c](https://github.com/derf/vusb-i2c) for a
 general-purpose USB-I2C tool based on VUSB.
 
-## recognizing the firmware state
+## determining the firmware state
 
-At the time of this writing, a newly flashed MicroMoody with default address
-will run the RGB blink mode (starting with yellow), while a newly flashed
-MicroMoody with only the addresses changed and no mode set will run in
-rgb fading mode (starting with green).
+A newly flashed MicroMoody will pulse RGB colors (red -> off -> yellow -> off
+-> ...).
+
+After the address has been set, it will pulse yellow / cyan depending on the
+payload address bits (see command 241).
+
 
 ## I2C master operation
+
+NOT SUPPORTED RIGHT NOW.
 
 When compiled with -DI2CMASTER (disabled by default), the MicroMoody will act
 as I2C bus master. After each transition (after half the time until the next

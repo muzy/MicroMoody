@@ -13,31 +13,30 @@
 #include <avr/interrupt.h>
 
 /*
- * PB1: g (OC1A)
- * PB3: b  (soft pwm)
- * PB4: r   (OC1B)
+ * PB1: green (OC1A)
+ * PB3: blue  (soft pwm)
+ * PB4: red   (OC1B)
  */
 
 #define VR ( OCR1B   )
 #define VG ( OCR1A   )
 #define VB ( is_blue )
 
-#define OM_MODE_STEADY        (  0)
-#define OM_MODE_BLINKRGB      (  1)
-#define OM_MODE_BLINKRAND     (  2)
-#define OM_MODE_BLINKONOFF    (  3)
-#define OM_MODE_FADETOSTEADY  (  4)
-#define OM_MODE_FADERGB       (  5)
-#define OM_MODE_FADERAND      (  6)
-#define OM_MODE_FADEONOFF     (  7)
-#define OM_MODE_TEMPERATURE   (  8)
-#define OM_MODE_STARTANIM     ( 63)
-#define OM_MODE_ANIM_LOW      ( 64)
-#define OM_MODE_ANIM_HIGH     (159)
+#define OM_MODE_ANIM_LOW      (  0)
+#define OM_MODE_ANIM_HIGH     (111)
+#define OM_MODE_STARTANIM     (112)
+#define OM_MODE_STEADY        (128)
+#define OM_MODE_BLINKRGB      (129)
+#define OM_MODE_BLINKRAND     (130)
+#define OM_MODE_BLINKONOFF    (131)
+#define OM_MODE_FADETOSTEADY  (132)
+#define OM_MODE_FADERGB       (133)
+#define OM_MODE_FADERAND      (134)
+#define OM_MODE_FADEONOFF     (135)
 #define OM_MODE_SAVESTATE     (240)
 #define OM_MODE_SETADDR       (241)
 
-#define SEQ_MAX (384)
+#define SEQ_MAX (448)
 
 #define TEMPERATURE_ZERO (355)
 
@@ -65,7 +64,7 @@ volatile rgbint16_t c_step = {0, 0, 0};
 volatile rgbint16_t c_cur = {0, 0, 0};
 
 volatile uint8_t is_blue = 0;
-volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed;
+volatile uint8_t opmode = OM_MODE_ANIM_LOW, speed = 1;
 
 volatile uint8_t seq[SEQ_MAX + 1];
 volatile uint8_t step = 0;
@@ -129,6 +128,17 @@ int main (void)
 
 		for (seq_cnt = 0; seq_cnt <= SEQ_MAX; seq_cnt++)
 			seq[seq_cnt] = eeprom_read_byte(&ee_seq[seq_cnt]);
+	}
+	else {
+		seq[0] =  16;
+		seq[1] =  40;
+		seq[2] =  12;
+		seq[3] =   0;
+		seq[4] =  16;
+		seq[5] =   0;
+		seq[6] =   0;
+		seq[7] =   0;
+		seq[SEQ_MAX] = OM_MODE_ANIM_LOW + 1;
 	}
 
 	set_colour();
@@ -298,8 +308,8 @@ ISR(TIMER0_OVF_vect)
 #ifdef I2CMASTER
 		i2cstep = 0;
 #endif
-		if ((opmode >= OM_MODE_ANIM_LOW) && (opmode < OM_MODE_ANIM_HIGH)) {
-			seq_addr = (opmode - OM_MODE_ANIM_LOW) * 4;
+		if (opmode <= OM_MODE_ANIM_HIGH) {
+			seq_addr = (uint16_t)opmode * 4;
 			speed    = seq[ seq_addr + 0 ];
 			c_dest.r = seq[ seq_addr + 1 ] * 64;
 			c_dest.g = seq[ seq_addr + 2 ] * 64;
@@ -380,7 +390,7 @@ ISR(USI_OVF_vect)
 				addr_i2c = rcvbuf[2];
 				for (seq_addr = 0; seq_addr < 64; seq_addr += 8) {
 					seq[ seq_addr + 0 ] = 4;
-					seq[ seq_addr + 1 ] = (addr_hi & _BV(7 - (seq_addr / 8))) * 255;
+					seq[ seq_addr + 1 ] = (addr_hi & _BV(7 - (seq_addr / 8))) ? 255 : 0;
 					seq[ seq_addr + 2 ] = 255;
 					seq[ seq_addr + 3 ] = ~seq[ seq_addr + 1 ];
 					seq[ seq_addr + 4 ] = 8;
@@ -390,7 +400,7 @@ ISR(USI_OVF_vect)
 				}
 				for (seq_addr = 64; seq_addr < 128; seq_addr += 8) {
 					seq[ seq_addr + 0 ] = 4;
-					seq[ seq_addr + 1 ] = (addr_lo & _BV(15 - (seq_addr / 8))) * 255;
+					seq[ seq_addr + 1 ] = (addr_lo & _BV(15 - (seq_addr / 8))) ? 255 : 0;
 					seq[ seq_addr + 2 ] = 255;
 					seq[ seq_addr + 3 ] = ~seq[seq_addr + 1 ];
 					seq[ seq_addr + 4 ] = 8;
@@ -458,8 +468,8 @@ ISR(USI_OVF_vect)
 				if (rcvbuf[6] == OM_MODE_STARTANIM) {
 					opmode = OM_MODE_ANIM_LOW;
 				}
-				else if ((rcvbuf[6] >= OM_MODE_ANIM_LOW) && (rcvbuf[6] < OM_MODE_ANIM_HIGH)) {
-					seq_addr = (rcvbuf[6] - OM_MODE_ANIM_LOW) * 4;
+				else if (rcvbuf[6] <= OM_MODE_ANIM_HIGH) {
+					seq_addr = rcvbuf[6] * 4;
 					seq[ seq_addr + 0 ] = rcvbuf[5];
 					seq[ seq_addr + 1 ] = rcvbuf[4];
 					seq[ seq_addr + 2 ] = rcvbuf[3];
@@ -477,7 +487,7 @@ ISR(USI_OVF_vect)
 							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
 					}
 					else {
-						for (seq_addr = 0; seq_addr <= ((seq[SEQ_MAX] - OM_MODE_ANIM_LOW) * 4 + 3); seq_addr++) {
+						for (seq_addr = 0; seq_addr <= (seq[SEQ_MAX] * 4 + 3); seq_addr++) {
 							eeprom_write_byte(&ee_seq[seq_addr], seq[seq_addr]);
 						}
 					}

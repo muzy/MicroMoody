@@ -4,11 +4,11 @@ esleep=0.3
 lsleep=0.3
 
 propcolour() {
-	vusb-i2cset 17 4 12 "$@" 0 1
+	vusb-i2cset 17 0 12 "$@" 0 1
 	sleep ${esleep}
-	vusb-i2cset 17 4 12 "$@" 0 2
+	vusb-i2cset 17 0 12 "$@" 0 2
 	sleep ${esleep}
-	vusb-i2cset 17 4 12 "$@" 0 3
+	vusb-i2cset 17 0 12 "$@" 0 3
 	sleep ${lsleep}
 }
 
