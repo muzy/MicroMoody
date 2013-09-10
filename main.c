@@ -78,7 +78,7 @@ volatile enum {
 
 uint8_t ee_valid EEMEM;
 uint8_t ee_seq[SEQ_MAX + 1] EEMEM;
-uint8_t ee_addrhi, ee_addrlo, ee_addri2c EEMEM;
+uint8_t ee_addrhi EEMEM, ee_addrlo EEMEM, ee_addri2c EEMEM;
 
 static const __flash uint8_t pwmtable[32] = {
 	0, 1, 2, 2, 2, 3, 3, 4, 5, 6, 7, 8, 10, 11, 13, 16, 19, 23,
