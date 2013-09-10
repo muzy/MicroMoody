@@ -30,14 +30,12 @@ void i2csend(byte mode, byte spd, byte red, byte green, byte blue, byte addrhi, 
 void add_anim_step(byte transition_delay, byte red, byte green, byte blue)
 {
   static int anim_cnt = 0;
-  i2csend(64 + anim_cnt, transition_delay, red, green, blue, 255, 255);
+  i2csend(anim_cnt, transition_delay, red, green, blue, 255, 255);
   anim_cnt++;
 }
 
 void start_anim()
 {
-  i2csend(63, 0, 0, 0, 0, 255, 255);
-
   // uncomment the following to save the animation to EEPROM
   // i2csend(240, 0, 0, 0, 0, 255, 255);
 }
