@@ -12,8 +12,8 @@
 
 #include <Wire.h>
 
-int esleep = 300;
-int lsleep = 300;
+int esleep = 500;
+int lsleep = 500;
 
 void setup()
 {
@@ -35,7 +35,7 @@ void i2csend(byte mode, byte spd, byte red, byte green, byte blue, byte addrhi, 
 
 void propcolour(byte red, byte green, byte blue)
 {
-  i2csend(0, 0, red, green, blue, 0, 1);
+  i2csend(0, 12, red, green, blue, 0, 1);
   delay(esleep);
   i2csend(0, 12, red, green, blue, 0, 2);
   delay(esleep);
