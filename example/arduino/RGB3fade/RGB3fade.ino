@@ -7,7 +7,7 @@
  * Expects three micromoodies with i2c address 0x11 and moody
  * addresses 0x0001, 0x0002, 0x0003 on the bus.
  * Will do fast RGB fading on all three (with delays between the
- * individual moodies)
+ * individual moodies: 0001 first, then 0002, then 0003)
  */
 
 #include <Wire.h>
@@ -35,11 +35,11 @@ void i2csend(byte mode, byte spd, byte red, byte green, byte blue, byte addrhi, 
 
 void propcolour(byte red, byte green, byte blue)
 {
-  i2csend(4, 4, red, green, blue, 0, 1);
+  i2csend(0, 0, red, green, blue, 0, 1);
   delay(esleep);
-  i2csend(4, 4, red, green, blue, 0, 2);
+  i2csend(0, 12, red, green, blue, 0, 2);
   delay(esleep);
-  i2csend(4, 4, red, green, blue, 0, 3);
+  i2csend(0, 12, red, green, blue, 0, 3);
   delay(lsleep);
 }
 
