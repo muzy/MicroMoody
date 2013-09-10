@@ -304,7 +304,7 @@ ISR(TIMER0_OVF_vect)
 	}
 #endif
 
-	if (animstep == ( ( (uint16_t)delay ) << 2 ) ) {
+	if (animstep == (uint16_t)delay << 2 ) {
 		animstep = 0;
 		c_cur.r = c_dest.r;
 		c_cur.g = c_dest.g;
@@ -386,7 +386,7 @@ ISR(USI_OVF_vect)
 		if (
 				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
 				 || ((rcvbuf[1] == 0xff) && (rcvbuf[0] == 0xff)))) {
-			step = animstep = 0;
+			step = 0;
 
 			if (rcvbuf[6] == OM_MODE_SETADDR) {
 				addr_hi  = rcvbuf[4];
@@ -429,6 +429,11 @@ ISR(USI_OVF_vect)
 				seq[ seq_addr + 2 ] = rcvbuf[3];
 				seq[ seq_addr + 3 ] = rcvbuf[2];
 				seq[SEQ_MAX] = rcvbuf[6];
+				if (rcvbuf[6] == OM_MODE_ANIM_LOW) {
+					animstep = (uint16_t)delay << 2;
+					calc_fadesteps();
+					set_colour();
+				}
 			}
 			else if (rcvbuf[6] >= OM_MODE_SAVESTATE) {
 				eeprom_write_byte(&ee_valid, 1);
