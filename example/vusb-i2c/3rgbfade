@@ -1,14 +1,15 @@
 #!/bin/sh
 
-esleep=0.3
-lsleep=0.3
+esleep=${1-1}
+fdelay=${3-36}
+lsleep=${2-4}
 
 propcolour() {
-	vusb-i2cset 17 4 12 "$@" 0 1
+	vusb-i2cset 17 4 ${fdelay} "$@" 0 1
 	sleep ${esleep}
-	vusb-i2cset 17 4 12 "$@" 0 2
+	vusb-i2cset 17 4 ${fdelay} "$@" 0 2
 	sleep ${esleep}
-	vusb-i2cset 17 4 12 "$@" 0 3
+	vusb-i2cset 17 4 ${fdelay} "$@" 0 3
 	sleep ${lsleep}
 }
 
