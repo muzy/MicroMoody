@@ -445,7 +445,7 @@ ISR(USI_OVF_vect)
 			}
 			else {
 				comm_status = S_NONE;
-				USISR &= ~(_BV(USIOIE) | _BV(USIWM0));
+				USICR &= ~(_BV(USIOIE) | _BV(USIWM0));
 			}
 			break;
 	}
