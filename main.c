@@ -438,19 +438,15 @@ ISR(USI_OVF_vect)
 			break;
 		case S_BYTE:
 			rcvbuf[--rcvcnt] = USIDR;
-			if (rcvcnt) {
-				DDRB |= _BV(P_SDA);
-				USISR = 0x0e;
-				comm_status = S_ACK;
-			}
-			else {
-				comm_status = S_NONE;
-				USICR &= ~(_BV(USIOIE) | _BV(USIWM0));
-			}
+			DDRB |= _BV(P_SDA);
+			USISR = 0x0e;
+			comm_status = S_ACK;
 			break;
 	}
 
-	if (rcvcnt == 0) {
+	if (!rcvcnt && (comm_status == S_BYTE)) {
+		comm_status = S_NONE;
+		USICR &= ~(_BV(USIOIE) | _BV(USIWM0));
 		rcvcnt = sizeof(rcvbuf);
 		if (
 				(((rcvbuf[1] == addr_hi) && (rcvbuf[0] == addr_lo))
